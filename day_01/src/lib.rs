@@ -14,7 +14,7 @@ pub fn part_two(input: &str) -> u64 {
         .map(|elf| elf.lines().map(|item| item.parse().unwrap_or(0)).sum())
         .collect();
 
-    totals.pop().unwrap_or(0) + totals.pop().unwrap_or(0) + totals.pop().unwrap_or(0)
+    (0..3).map(|_| totals.pop().unwrap_or(0)).sum()
 }
 
 #[cfg(test)]
