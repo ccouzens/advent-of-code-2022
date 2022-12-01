@@ -1,34 +1,18 @@
 use std::collections::BinaryHeap;
 
 pub fn part_one(input: &str) -> u64 {
-    let mut max = 0;
-
-    let mut current = 0;
-    for line in input.lines() {
-        if line.is_empty() {
-            current = 0;
-        } else {
-            current += line.parse::<u64>().unwrap();
-            max = u64::max(max, current);
-        }
-    }
-
-    max
+    input
+        .split("\n\n")
+        .map(|elf| elf.lines().map(|line| line.parse().unwrap_or(0)).sum())
+        .max()
+        .unwrap_or(0)
 }
 
 pub fn part_two(input: &str) -> u64 {
-    let mut heap = BinaryHeap::new();
-
-    let mut current = 0;
-    for line in input.lines() {
-        if line.is_empty() {
-            heap.push(current);
-            current = 0;
-        } else {
-            current += line.parse::<u64>().unwrap();
-        }
-    }
-    heap.push(current);
+    let mut heap = input
+        .split("\n\n")
+        .map(|elf| elf.lines().map(|line| line.parse().unwrap_or(0)).sum())
+        .collect::<BinaryHeap<_>>();
 
     heap.pop().unwrap_or(0) + heap.pop().unwrap_or(0) + heap.pop().unwrap_or(0)
 }
@@ -56,5 +40,4 @@ mod tests {
     fn challenge_part_two() {
         assert_eq!(part_two(include_str!("../challenge_1.txt")), 207410);
     }
-
 }
