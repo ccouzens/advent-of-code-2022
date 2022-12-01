@@ -3,18 +3,18 @@ use std::collections::BinaryHeap;
 pub fn part_one(input: &str) -> u64 {
     input
         .split("\n\n")
-        .map(|elf| elf.lines().map(|line| line.parse().unwrap_or(0)).sum())
+        .map(|elf| elf.lines().map(|item| item.parse().unwrap_or(0)).sum())
         .max()
         .unwrap_or(0)
 }
 
 pub fn part_two(input: &str) -> u64 {
-    let mut heap = input
+    let mut totals: BinaryHeap<_> = input
         .split("\n\n")
-        .map(|elf| elf.lines().map(|line| line.parse().unwrap_or(0)).sum())
-        .collect::<BinaryHeap<_>>();
+        .map(|elf| elf.lines().map(|item| item.parse().unwrap_or(0)).sum())
+        .collect();
 
-    heap.pop().unwrap_or(0) + heap.pop().unwrap_or(0) + heap.pop().unwrap_or(0)
+    totals.pop().unwrap_or(0) + totals.pop().unwrap_or(0) + totals.pop().unwrap_or(0)
 }
 
 #[cfg(test)]
