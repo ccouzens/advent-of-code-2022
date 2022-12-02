@@ -1,76 +1,25 @@
-enum RPSMove {
-    Rock,
-    Paper,
-    Scissors,
-}
-
-enum Outcome {
-    Win,
-    Draw,
-    Lose,
-}
-
-impl RPSMove {
-    fn new(input: &str) -> Option<Self> {
-        match input {
-            "A" => Some(Self::Rock),
-            "B" => Some(Self::Paper),
-            "C" => Some(Self::Scissors),
-            "X" => Some(Self::Rock),
-            "Y" => Some(Self::Paper),
-            "Z" => Some(Self::Scissors),
-            _ => None,
-        }
-    }
-}
-
 struct Round {
-    opponent: RPSMove,
-    response: RPSMove,
+    theirs: u8,
+    ours: u8,
 }
 
 impl Round {
-    fn new(input: &str) -> Option<Self> {
-        let (a, b) = input.split_once(' ')?;
+    fn new(input: &[u8]) -> Option<Self> {
         Some(Self {
-            opponent: RPSMove::new(a)?,
-            response: RPSMove::new(b)?,
+            theirs: input.first()? - b'A',
+            ours: input.get(2)? - b'X',
         })
     }
 
-    fn outcome(&self) -> Outcome {
-        use Outcome::*;
-        use RPSMove::*;
-        match (&self.opponent, &self.response) {
-            (Rock, Rock) => Draw,
-            (Rock, Paper) => Win,
-            (Rock, Scissors) => Lose,
-            (Paper, Rock) => Lose,
-            (Paper, Paper) => Draw,
-            (Paper, Scissors) => Win,
-            (Scissors, Rock) => Win,
-            (Scissors, Paper) => Lose,
-            (Scissors, Scissors) => Draw,
-        }
-    }
-
     fn score(&self) -> u64 {
-        (match self.outcome() {
-            Outcome::Win => 6,
-            Outcome::Draw => 3,
-            Outcome::Lose => 0,
-        }) + match self.response {
-            RPSMove::Rock => 1,
-            RPSMove::Paper => 2,
-            RPSMove::Scissors => 3,
-        }
+        ((self.ours + 1) + ((self.ours + 4 - self.theirs) % 3) * 3) as u64
     }
 }
 
 pub fn part_one(input: &str) -> u64 {
     input
         .lines()
-        .map(Round::new)
+        .map(|line| Round::new(line.as_bytes()))
         .map(|r| Round::score(&r.unwrap()))
         .sum()
 }
