@@ -7,34 +7,34 @@
 // Win: 2
 
 struct Round {
-    theirs: u8,
+    outcome: u8,
     ours: u8,
 }
 
 impl Round {
-    fn new_with_their_move(input: &[u8]) -> Option<Self> {
-        Some(Self {
-            theirs: input.first()? - b'A',
-            ours: input.get(2)? - b'X',
-        })
+    fn new_from_our_move(input: &[u8]) -> Option<Self> {
+        let theirs = input.first()? - b'A';
+        let ours = input.get(2)? - b'X';
+        let outcome = (ours + 4 - theirs) % 3;
+        Some(Self { outcome, ours })
     }
 
-    fn new_with_round_outcome(input: &[u8]) -> Option<Self> {
+    fn new_from_round_outcome(input: &[u8]) -> Option<Self> {
         let theirs = input.first()? - b'A';
         let outcome = input.get(2)? - b'X';
         let ours = (outcome + 2 + theirs) % 3;
-        Some(Self { ours, theirs })
+        Some(Self { ours, outcome })
     }
 
     fn score(&self) -> u64 {
-        ((self.ours + 1) + ((self.ours + 4 - self.theirs) % 3) * 3) as u64
+        (self.ours + 1 + self.outcome * 3) as u64
     }
 }
 
 pub fn part_one(input: &str) -> u64 {
     input
         .lines()
-        .filter_map(|line| Round::new_with_their_move(line.as_bytes()))
+        .filter_map(|line| Round::new_from_our_move(line.as_bytes()))
         .map(|r| Round::score(&r))
         .sum()
 }
@@ -42,7 +42,7 @@ pub fn part_one(input: &str) -> u64 {
 pub fn part_two(input: &str) -> u64 {
     input
         .lines()
-        .filter_map(|line| Round::new_with_round_outcome(line.as_bytes()))
+        .filter_map(|line| Round::new_from_round_outcome(line.as_bytes()))
         .map(|r| Round::score(&r))
         .sum()
 }
