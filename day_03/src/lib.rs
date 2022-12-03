@@ -12,13 +12,12 @@ pub fn part_one(input: &str) -> u64 {
     input
         .lines()
         .filter_map(|backpack| {
-            let backpack = backpack.as_bytes();
-            let (a, b) = backpack.split_at(backpack.len() / 2);
+            let (a, b) = backpack.as_bytes().split_at(backpack.len() / 2);
             a.iter()
                 .collect::<BTreeSet<_>>()
                 .intersection(&b.iter().collect())
-                .next()
                 .map(|&&item| item_priority(item))
+                .next()
         })
         .sum()
 }
@@ -32,7 +31,7 @@ pub fn part_two(input: &str) -> u64 {
         backpacks_iter.next(),
         backpacks_iter.next(),
     ) {
-        if let Some(badge) = a
+        sum += a
             .bytes()
             .collect::<BTreeSet<_>>()
             .intersection(&b.bytes().collect())
@@ -40,10 +39,9 @@ pub fn part_two(input: &str) -> u64 {
             .collect::<BTreeSet<_>>()
             .intersection(&c.bytes().collect())
             .cloned()
+            .map(item_priority)
             .next()
-        {
-            sum += item_priority(badge);
-        };
+            .unwrap_or(0);
     }
 
     sum
