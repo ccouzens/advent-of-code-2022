@@ -1,3 +1,5 @@
+#![no_std]
+
 use nom::{
     character::complete::{char, digit1},
     combinator::{map, map_res},
