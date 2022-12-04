@@ -38,10 +38,9 @@ fn parse_elf_pair(input: &str) -> IResult<&str, (SectionAssignment, SectionAssig
 }
 
 fn elf_pairs(input: &str) -> impl Iterator<Item = (SectionAssignment, SectionAssignment)> + '_ {
-    input.lines().filter_map(|line| match parse_elf_pair(line) {
-        Ok(("", (a, b))) => Some((a, b)),
-        _ => None,
-    })
+    input
+        .lines()
+        .filter_map(|line| parse_elf_pair(line).ok().map(|(_, pair)| pair))
 }
 
 pub fn part_one(input: &str) -> usize {
@@ -51,9 +50,7 @@ pub fn part_one(input: &str) -> usize {
 }
 
 pub fn part_two(input: &str) -> usize {
-    elf_pairs(input)
-        .filter(|(a, b)| a.overlaps(b))
-        .count()
+    elf_pairs(input).filter(|(a, b)| a.overlaps(b)).count()
 }
 
 #[cfg(test)]
