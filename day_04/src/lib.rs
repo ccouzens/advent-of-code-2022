@@ -12,6 +12,10 @@ impl SectionAssignment {
     fn fully_contains(&self, other: &Self) -> bool {
         self.0 <= other.0 && self.1 >= other.1
     }
+
+    fn overlaps(&self, other: &Self) -> bool {
+        self.1 >= other.0 && other.1 >= self.0
+    }
 }
 
 fn parse_section_assignments(input: &str) -> IResult<&str, SectionAssignment> {
@@ -46,6 +50,12 @@ pub fn part_one(input: &str) -> usize {
         .count()
 }
 
+pub fn part_two(input: &str) -> usize {
+    elf_pairs(input)
+        .filter(|(a, b)| a.overlaps(b))
+        .count()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -58,5 +68,15 @@ mod tests {
     #[test]
     fn challenge_part_one() {
         assert_eq!(part_one(include_str!("../challenge.txt")), 584);
+    }
+
+    #[test]
+    fn example_part_two() {
+        assert_eq!(part_two(include_str!("../example.txt")), 4);
+    }
+
+    #[test]
+    fn challenge_part_two() {
+        assert_eq!(part_two(include_str!("../challenge.txt")), 933);
     }
 }
