@@ -75,38 +75,25 @@ fn parse_instruction(input: &str) -> IResult<&str, Instruction> {
     )(input)
 }
 
-fn crane(input: &str, follow_instruction: impl Fn(&mut Vec<Vec<char>>, Instruction)) -> String {
+fn crane(input: &str, follow_instruction: impl Fn(&mut Vec<char>)) -> String {
     let (input, mut stacks) = parse_starting_stacks(input).unwrap();
 
     for instruction_line in input.lines() {
         let instruction = parse_instruction(instruction_line).unwrap().1;
-        follow_instruction(&mut stacks, instruction);
+        let stack_from = &mut stacks[instruction.from - 1];
+        let mut lift_stack = stack_from.split_off(stack_from.len() - instruction.num);
+        follow_instruction(&mut lift_stack);
+        stacks[instruction.to - 1].append(&mut lift_stack);
     }
     stacks.iter().filter_map(|stack| stack.last()).collect()
 }
 
 pub fn part_one(input: &str) -> String {
-    crane(
-        input,
-        |stacks: &mut Vec<Vec<char>>, instruction: Instruction| {
-            for _ in 0..instruction.num {
-                if let Some(elf_crate) = stacks[instruction.from - 1].pop() {
-                    stacks[instruction.to - 1].push(elf_crate);
-                }
-            }
-        },
-    )
+    crane(input, |lift_stack| lift_stack.reverse())
 }
 
 pub fn part_two(input: &str) -> String {
-    crane(
-        input,
-        |stacks: &mut Vec<Vec<char>>, instruction: Instruction| {
-            let from_stack = &mut stacks[instruction.from - 1];
-            let mut tmp_stack = from_stack.split_off(from_stack.len() - instruction.num);
-            stacks[instruction.to - 1].append(&mut tmp_stack);
-        },
-    )
+    crane(input, |_| {})
 }
 
 #[cfg(test)]
