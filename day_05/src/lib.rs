@@ -70,36 +70,43 @@ fn parse_instruction(input: &str) -> IResult<&str, Instruction> {
             map_res(digit1, str::parse),
             tag(" to "),
             map_res(digit1, str::parse),
-            line_ending,
         )),
-        |(_, num, _, from, _, to, _)| Instruction { num, from, to },
+        |(_, num, _, from, _, to)| Instruction { num, from, to },
     )(input)
 }
 
-pub fn part_one(input: &str) -> Result<String, nom::Err<nom::error::Error<&str>>> {
-    let (mut input, mut stacks) = parse_starting_stacks(input)?;
+fn crane(input: &str, follow_instruction: impl Fn(&mut Vec<Vec<char>>, Instruction)) -> String {
+    let (input, mut stacks) = parse_starting_stacks(input).unwrap();
 
-    while let Ok((rest, instruction)) = parse_instruction(input) {
-        input = rest;
-        for _ in 0..instruction.num {
-            if let Some(elf_crate) = stacks[instruction.from - 1].pop() {
-                stacks[instruction.to - 1].push(elf_crate);
-            }
-        }
+    for instruction_line in input.lines() {
+        let instruction = parse_instruction(instruction_line).unwrap().1;
+        follow_instruction(&mut stacks, instruction);
     }
-    Ok(stacks.iter().flat_map(|stack| stack.last()).collect())
+    stacks.iter().filter_map(|stack| stack.last()).collect()
 }
 
-pub fn part_two(input: &str) -> Result<String, nom::Err<nom::error::Error<&str>>> {
-    let (mut input, mut stacks) = parse_starting_stacks(input)?;
+pub fn part_one(input: &str) -> String {
+    crane(
+        input,
+        |stacks: &mut Vec<Vec<char>>, instruction: Instruction| {
+            for _ in 0..instruction.num {
+                if let Some(elf_crate) = stacks[instruction.from - 1].pop() {
+                    stacks[instruction.to - 1].push(elf_crate);
+                }
+            }
+        },
+    )
+}
 
-    while let Ok((rest, instruction)) = parse_instruction(input) {
-        input = rest;
-        let from_stack = &mut stacks[instruction.from - 1];
-        let mut tmp_stack = from_stack.split_off(from_stack.len() - instruction.num);
-        stacks[instruction.to - 1].append(&mut tmp_stack);
-    }
-    Ok(stacks.iter().flat_map(|stack| stack.last()).collect())
+pub fn part_two(input: &str) -> String {
+    crane(
+        input,
+        |stacks: &mut Vec<Vec<char>>, instruction: Instruction| {
+            let from_stack = &mut stacks[instruction.from - 1];
+            let mut tmp_stack = from_stack.split_off(from_stack.len() - instruction.num);
+            stacks[instruction.to - 1].append(&mut tmp_stack);
+        },
+    )
 }
 
 #[cfg(test)]
@@ -108,27 +115,21 @@ mod tests {
 
     #[test]
     fn example_part_one() {
-        assert_eq!(part_one(include_str!("../example.txt")).unwrap(), "CMZ");
+        assert_eq!(part_one(include_str!("../example.txt")), "CMZ");
     }
 
     #[test]
     fn challenge_part_one() {
-        assert_eq!(
-            part_one(include_str!("../challenge.txt")).unwrap(),
-            "QNHWJVJZW"
-        );
+        assert_eq!(part_one(include_str!("../challenge.txt")), "QNHWJVJZW");
     }
 
     #[test]
     fn example_part_two() {
-        assert_eq!(part_two(include_str!("../example.txt")).unwrap(), "MCD");
+        assert_eq!(part_two(include_str!("../example.txt")), "MCD");
     }
 
     #[test]
     fn challenge_part_two() {
-        assert_eq!(
-            part_two(include_str!("../challenge.txt")).unwrap(),
-            "BPCZJLFJW"
-        );
+        assert_eq!(part_two(include_str!("../challenge.txt")), "BPCZJLFJW");
     }
 }
