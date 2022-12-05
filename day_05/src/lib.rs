@@ -80,8 +80,8 @@ fn crane(input: &str, follow_instruction: impl Fn(&mut Vec<char>)) -> String {
 
     for instruction_line in input.lines() {
         let instruction = parse_instruction(instruction_line).unwrap().1;
-        let stack_from = &mut stacks[instruction.from - 1];
-        let mut lift_stack = stack_from.split_off(stack_from.len() - instruction.num);
+        let from_stack = &mut stacks[instruction.from - 1];
+        let mut lift_stack = from_stack.split_off(from_stack.len() - instruction.num);
         follow_instruction(&mut lift_stack);
         stacks[instruction.to - 1].append(&mut lift_stack);
     }
