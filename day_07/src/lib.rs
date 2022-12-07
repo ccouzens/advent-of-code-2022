@@ -18,7 +18,7 @@ enum ConsoleLine<'a> {
     Cd(&'a str),
     Ls,
     Directory(&'a str),
-    File { name: &'a str, size: u64 },
+    File { size: u64 },
 }
 
 fn parse_cd(input: &str) -> IResult<&str, ConsoleLine> {
@@ -36,7 +36,7 @@ fn parse_directory(input: &str) -> IResult<&str, ConsoleLine> {
 fn parse_file(input: &str) -> IResult<&str, ConsoleLine> {
     map(
         tuple((map_res(digit1, str::parse), char(' '), not_line_ending)),
-        |(size, _, name)| ConsoleLine::File { name, size },
+        |(size, _, _name)| ConsoleLine::File { size },
     )(input)
 }
 
@@ -49,32 +49,24 @@ fn parse_commands(input: &str) -> IResult<&str, Vec<ConsoleLine>> {
 
 #[derive(Debug, Default)]
 struct FSTreeDirectory<'a> {
-    children: HashMap<&'a str, FSTreeNode<'a>>,
+    children: HashMap<&'a str, FSTreeDirectory<'a>>,
     size: u64,
 }
 
-#[derive(Debug)]
-enum FSTreeNode<'a> {
-    Directory(FSTreeDirectory<'a>),
-    File,
+struct FSTreeDirectoryIterator<'a, 'b> {
+    stack: Vec<std::collections::hash_map::Values<'a, &'b str, FSTreeDirectory<'b>>>,
 }
 
-struct FSTreeNodeIterator<'a, 'b> {
-    stack: Vec<std::collections::hash_map::Iter<'a, &'b str, FSTreeNode<'b>>>,
-}
-
-impl<'a, 'b> Iterator for FSTreeNodeIterator<'a, 'b> {
-    type Item = (&'b str, &'a FSTreeNode<'b>);
+impl<'a, 'b> Iterator for FSTreeDirectoryIterator<'a, 'b> {
+    type Item = &'a FSTreeDirectory<'b>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             let mut bottom_of_stack = self.stack.pop()?;
-            if let Some((name, node)) = bottom_of_stack.next() {
+            if let Some(dir) = bottom_of_stack.next() {
                 self.stack.push(bottom_of_stack);
-                if let FSTreeNode::Directory(dir) = node {
-                    self.stack.push(dir.children.iter());
-                }
-                return Some((*name, node));
+                self.stack.push(dir.children.values());
+                return Some(dir);
             }
         }
     }
@@ -100,10 +92,7 @@ impl<'a> FSTreeDirectory<'a> {
                     let mut current_dir = &mut root;
                     for name in stack.iter() {
                         match current_dir.children.get_mut(**name) {
-                            Some(FSTreeNode::Directory(dir)) => current_dir = dir,
-                            Some(FSTreeNode::File) => {
-                                return Err("Found file, expecting dir");
-                            }
+                            Some(dir) => current_dir = dir,
                             None => return Err("Missing directory in stack"),
                         }
                     }
@@ -112,32 +101,20 @@ impl<'a> FSTreeDirectory<'a> {
                             return Err("Directory already taken");
                         }
                         Entry::Vacant(v) => {
-                            v.insert(FSTreeNode::Directory(FSTreeDirectory::default()));
+                            v.insert(FSTreeDirectory::default());
                         }
                     }
                 }
-                (_, ConsoleLine::File { name, size }) => {
+                (_, ConsoleLine::File { size }) => {
                     root.size += size;
                     let mut current_dir = &mut root;
                     for name in stack.iter() {
                         match current_dir.children.get_mut(**name) {
-                            Some(FSTreeNode::Directory(dir)) => {
+                            Some(dir) => {
                                 dir.size += size;
                                 current_dir = dir
                             }
-                            Some(FSTreeNode::File) => {
-                                return Err("Found file, expecting dir");
-                            }
                             None => return Err("Missing directory in stack"),
-                        }
-                    }
-
-                    match current_dir.children.entry(name) {
-                        Entry::Occupied(_) => {
-                            return Err("File already taken");
-                        }
-                        Entry::Vacant(v) => {
-                            v.insert(FSTreeNode::File);
                         }
                     }
                 }
@@ -146,10 +123,11 @@ impl<'a> FSTreeDirectory<'a> {
         Ok(root)
     }
 
-    fn traverse_nodes(&self) -> impl Iterator<Item = (&'a str, &FSTreeNode<'a>)> {
-        FSTreeNodeIterator {
-            stack: vec![self.children.iter()],
+    fn traverse_nodes(&self) -> impl Iterator<Item = &FSTreeDirectory<'a>> {
+        FSTreeDirectoryIterator {
+            stack: vec![self.children.values()],
         }
+        .chain(once(self))
     }
 }
 
@@ -157,13 +135,8 @@ pub fn part_one(input: &str) -> Result<u64, &'static str> {
     let tree = FSTreeDirectory::new_from_observations(input)?;
     Ok(tree
         .traverse_nodes()
-        .map(|(_, node)| node)
-        .flat_map(|node| match node {
-            FSTreeNode::Directory(FSTreeDirectory { size, .. }) => Some(size),
-            FSTreeNode::File => None,
-        })
-        .chain(once(&tree.size))
-        .filter(|&&size| size <= 100000)
+        .map(|dir| dir.size)
+        .filter(|&size| size <= 100000)
         .sum())
 }
 
@@ -173,11 +146,12 @@ pub fn part_two(input: &str) -> Result<u64, &'static str> {
 
     dbg!(space_needed);
     tree.traverse_nodes()
-        .flat_map(|(_name, node)| match node {
-            FSTreeNode::Directory(FSTreeDirectory { size, .. }) if *size >= space_needed => {
-                Some(*size)
+        .flat_map(|dir| {
+            if dir.size >= space_needed {
+                Some(dir.size)
+            } else {
+                None
             }
-            _ => None,
         })
         .min()
         .ok_or("Failed to find big enough directory")
