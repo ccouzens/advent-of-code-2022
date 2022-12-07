@@ -1,7 +1,4 @@
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    iter::once,
-};
+use std::collections::HashMap;
 
 use nom::{
     branch::alt,
@@ -49,90 +46,73 @@ fn parse_commands(input: &str) -> IResult<&str, Vec<ConsoleLine>> {
 
 #[derive(Debug, Default)]
 struct FSTreeDirectory<'a> {
-    children: HashMap<&'a str, FSTreeDirectory<'a>>,
+    children: HashMap<&'a str, usize>,
     size: u64,
 }
 
-struct FSTreeDirectoryIterator<'a, 'b> {
-    stack: Vec<std::collections::hash_map::Values<'a, &'b str, FSTreeDirectory<'b>>>,
+struct FileSystem<'a> {
+    nodes: Vec<FSTreeDirectory<'a>>,
 }
 
-impl<'a, 'b> Iterator for FSTreeDirectoryIterator<'a, 'b> {
-    type Item = &'a FSTreeDirectory<'b>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let mut bottom_of_stack = self.stack.pop()?;
-            if let Some(dir) = bottom_of_stack.next() {
-                self.stack.push(bottom_of_stack);
-                self.stack.push(dir.children.values());
-                return Some(dir);
-            }
-        }
-    }
-}
-
-impl<'a> FSTreeDirectory<'a> {
-    fn new_from_observations(input: &'a str) -> Result<FSTreeDirectory<'a>, &'static str> {
+impl<'a> FileSystem<'a> {
+    fn new_from_observations(input: &'a str) -> Result<Self, &'static str> {
         let commands = parse_commands(input).map_err(|_| "Error parsing input")?.1;
-        let mut root = FSTreeDirectory::default();
-        let mut stack = vec![];
-        for (i, command) in commands.iter().enumerate() {
-            match (i, command) {
-                (0, ConsoleLine::Cd("/")) => {}
-                (0, _) => return Err("Expected to start at /"),
-                (_, ConsoleLine::Ls) => {}
-                (_, ConsoleLine::Cd("..")) => {
+        let mut filesystem = FileSystem {
+            nodes: vec![FSTreeDirectory::default()],
+        };
+        let mut stack = vec![0];
+        for command in commands.iter() {
+            let current_index = *stack.last().ok_or("Expected stack of directories")?;
+            match command {
+                ConsoleLine::Cd("/") => {
+                    stack = vec![0];
+                }
+                ConsoleLine::Ls => {}
+                ConsoleLine::Cd("..") => {
                     stack.pop();
                 }
-                (_, ConsoleLine::Cd(name)) => {
-                    stack.push(name);
+                ConsoleLine::Cd(name) => {
+                    let current_directory = filesystem
+                        .nodes
+                        .get(current_index)
+                        .ok_or("Failed to find node in filesystem")?;
+                    stack.push(
+                        *current_directory
+                            .children
+                            .get(name)
+                            .ok_or("Failed to find directory by name")?,
+                    );
                 }
-                (_, ConsoleLine::Directory(name)) => {
-                    let mut current_dir = &mut root;
-                    for name in stack.iter() {
-                        match current_dir.children.get_mut(**name) {
-                            Some(dir) => current_dir = dir,
-                            None => return Err("Missing directory in stack"),
-                        }
-                    }
-                    match current_dir.children.entry(name) {
-                        Entry::Occupied(_) => {
-                            return Err("Directory already taken");
-                        }
-                        Entry::Vacant(v) => {
-                            v.insert(FSTreeDirectory::default());
-                        }
-                    }
+                ConsoleLine::Directory(name) => {
+                    let index = filesystem.nodes.len();
+                    filesystem.nodes.push(FSTreeDirectory::default());
+                    let current_directory = filesystem
+                        .nodes
+                        .get_mut(current_index)
+                        .ok_or("Failed to find node in filesystem")?;
+                    current_directory.children.insert(name, index);
                 }
-                (_, ConsoleLine::File { size }) => {
-                    root.size += size;
-                    let mut current_dir = &mut root;
-                    for name in stack.iter() {
-                        match current_dir.children.get_mut(**name) {
-                            Some(dir) => {
-                                dir.size += size;
-                                current_dir = dir
-                            }
-                            None => return Err("Missing directory in stack"),
-                        }
+                ConsoleLine::File { size } => {
+                    for index in stack.iter() {
+                        let dir = filesystem
+                            .nodes
+                            .get_mut(*index)
+                            .ok_or("Failed to find directory from stack")?;
+                        dir.size += size;
                     }
                 }
             }
         }
-        Ok(root)
+        Ok(filesystem)
     }
 
     fn traverse_nodes(&self) -> impl Iterator<Item = &FSTreeDirectory<'a>> {
-        FSTreeDirectoryIterator {
-            stack: vec![self.children.values()],
-        }
-        .chain(once(self))
+        self.nodes.iter()
     }
 }
 
 pub fn part_one(input: &str) -> Result<u64, &'static str> {
-    let tree = FSTreeDirectory::new_from_observations(input)?;
+    let tree = FileSystem::new_from_observations(input)?;
     Ok(tree
         .traverse_nodes()
         .map(|dir| dir.size)
@@ -141,10 +121,10 @@ pub fn part_one(input: &str) -> Result<u64, &'static str> {
 }
 
 pub fn part_two(input: &str) -> Result<u64, &'static str> {
-    let tree = FSTreeDirectory::new_from_observations(input)?;
-    let space_needed = 30000000 - (70000000 - tree.size);
+    let tree = FileSystem::new_from_observations(input)?;
+    let root = tree.nodes.first().ok_or("Failed to find root node")?;
+    let space_needed = 30000000 - (70000000 - root.size);
 
-    dbg!(space_needed);
     tree.traverse_nodes()
         .flat_map(|dir| {
             if dir.size >= space_needed {
