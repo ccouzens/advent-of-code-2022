@@ -63,6 +63,12 @@ impl<'a> FileSystem<'a> {
         let mut stack = vec![0];
         for command in commands.iter() {
             let current_index = *stack.last().ok_or("Expected stack of directories")?;
+            let dir_count = filesystem.nodes.len();
+            let current_directory = filesystem
+                .nodes
+                .get_mut(current_index)
+                .ok_or("Failed to find node in filesystem")?;
+
             match command {
                 ConsoleLine::Cd("/") => {
                     stack = vec![0];
@@ -72,10 +78,6 @@ impl<'a> FileSystem<'a> {
                     stack.pop();
                 }
                 ConsoleLine::Cd(name) => {
-                    let current_directory = filesystem
-                        .nodes
-                        .get(current_index)
-                        .ok_or("Failed to find node in filesystem")?;
                     stack.push(
                         *current_directory
                             .children
@@ -84,13 +86,8 @@ impl<'a> FileSystem<'a> {
                     );
                 }
                 ConsoleLine::Directory(name) => {
-                    let index = filesystem.nodes.len();
+                    current_directory.children.insert(name, dir_count);
                     filesystem.nodes.push(FSTreeDirectory::default());
-                    let current_directory = filesystem
-                        .nodes
-                        .get_mut(current_index)
-                        .ok_or("Failed to find node in filesystem")?;
-                    current_directory.children.insert(name, index);
                 }
                 ConsoleLine::File { size } => {
                     for index in stack.iter() {
@@ -106,16 +103,15 @@ impl<'a> FileSystem<'a> {
         Ok(filesystem)
     }
 
-    fn traverse_nodes(&self) -> impl Iterator<Item = &FSTreeDirectory<'a>> {
-        self.nodes.iter()
+    fn traverse_dir_sizes(&self) -> impl Iterator<Item = u64> + '_ {
+        self.nodes.iter().map(|n| n.size)
     }
 }
 
 pub fn part_one(input: &str) -> Result<u64, &'static str> {
     let tree = FileSystem::new_from_observations(input)?;
     Ok(tree
-        .traverse_nodes()
-        .map(|dir| dir.size)
+        .traverse_dir_sizes()
         .filter(|&size| size <= 100000)
         .sum())
 }
@@ -125,14 +121,8 @@ pub fn part_two(input: &str) -> Result<u64, &'static str> {
     let root = tree.nodes.first().ok_or("Failed to find root node")?;
     let space_needed = 30000000 - (70000000 - root.size);
 
-    tree.traverse_nodes()
-        .flat_map(|dir| {
-            if dir.size >= space_needed {
-                Some(dir.size)
-            } else {
-                None
-            }
-        })
+    tree.traverse_dir_sizes()
+        .filter(|&size| size >= space_needed)
         .min()
         .ok_or("Failed to find big enough directory")
 }
