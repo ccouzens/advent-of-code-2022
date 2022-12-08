@@ -18,7 +18,6 @@ enum ConsoleLine<'a> {
     File { size: u64 },
 }
 
-
 fn parse_commands(input: &str) -> IResult<&str, Vec<ConsoleLine>> {
     separated_list1(
         newline,
@@ -45,6 +44,12 @@ struct FileSystem<'a> {
 }
 
 impl<'a> FileSystem<'a> {
+    fn dir_at_index(&mut self, index: usize) -> Result<&mut FSTreeDirectory<'a>, &'static str> {
+        self.nodes
+            .get_mut(index)
+            .ok_or("Failed to find node in filesystem")
+    }
+
     fn new_from_observations(input: &'a str) -> Result<Self, &'static str> {
         let commands = parse_commands(input).map_err(|_| "Error parsing input")?.1;
         let mut filesystem = FileSystem {
@@ -53,10 +58,8 @@ impl<'a> FileSystem<'a> {
         let mut stack = vec![0];
         for command in commands.iter() {
             let dir_count = filesystem.nodes.len();
-            let current_directory = filesystem
-                .nodes
-                .get_mut(*stack.last().ok_or("Expected stack of directories")?)
-                .ok_or("Failed to find node in filesystem")?;
+            let current_index = *stack.last().ok_or("Expected stack of directories")?;
+            let current_directory = filesystem.dir_at_index(current_index)?;
 
             match command {
                 ConsoleLine::Cd("/") => {
@@ -80,10 +83,7 @@ impl<'a> FileSystem<'a> {
                 }
                 ConsoleLine::File { size } => {
                     for index in stack.iter() {
-                        let dir = filesystem
-                            .nodes
-                            .get_mut(*index)
-                            .ok_or("Failed to find directory from stack")?;
+                        let dir = filesystem.dir_at_index(*index)?;
                         dir.size += size;
                     }
                 }
