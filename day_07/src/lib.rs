@@ -10,7 +10,7 @@ use nom::{
     IResult,
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 enum ConsoleLine<'a> {
     Cd(&'a str),
     Ls,
