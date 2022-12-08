@@ -101,13 +101,9 @@ pub fn part_one(input: &str) -> usize {
         .iter()
         .enumerate()
         .filter(|&(i, &h)| {
-            DIRECTIONS.iter().any(|&d| {
-                forest
-                    .line_of_sight(i, d)
-                    .max()
-                    .map(|m| h > m)
-                    .unwrap_or(true)
-            })
+            DIRECTIONS
+                .iter()
+                .any(|&d| forest.line_of_sight(i, d).all(|other| h > other))
         })
         .count()
 }
