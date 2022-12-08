@@ -33,7 +33,7 @@ impl<'a> Iterator for TreesIter<'a> {
         let w = self.forest.width;
         let y = i / w;
         let x = i % w;
-        let new_index = match self.direction {
+        self.index = match self.direction {
             Direction::North => {
                 if y == 0 {
                     None
@@ -62,14 +62,8 @@ impl<'a> Iterator for TreesIter<'a> {
                     Some(i - 1)
                 }
             }
-        };
-        match new_index {
-            None => None,
-            Some(i) => {
-                self.index = i;
-                Some(self.forest.heights[i])
-            }
-        }
+        }?;
+        Some(self.forest.heights[self.index])
     }
 }
 
