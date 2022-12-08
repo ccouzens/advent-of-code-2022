@@ -18,29 +18,19 @@ enum ConsoleLine<'a> {
     File { size: u64 },
 }
 
-fn parse_cd(input: &str) -> IResult<&str, ConsoleLine> {
-    preceded(tag("$ cd "), map(not_line_ending, ConsoleLine::Cd))(input)
-}
-
-fn parse_ls(input: &str) -> IResult<&str, ConsoleLine> {
-    map(tag("$ ls"), |_| ConsoleLine::Ls)(input)
-}
-
-fn parse_directory(input: &str) -> IResult<&str, ConsoleLine> {
-    preceded(tag("dir "), map(not_line_ending, ConsoleLine::Directory))(input)
-}
-
-fn parse_file(input: &str) -> IResult<&str, ConsoleLine> {
-    map(
-        tuple((map_res(digit1, str::parse), char(' '), not_line_ending)),
-        |(size, _, _name)| ConsoleLine::File { size },
-    )(input)
-}
 
 fn parse_commands(input: &str) -> IResult<&str, Vec<ConsoleLine>> {
     separated_list1(
         newline,
-        alt((parse_cd, parse_ls, parse_directory, parse_file)),
+        alt((
+            preceded(tag("$ cd "), map(not_line_ending, ConsoleLine::Cd)),
+            map(tag("$ ls"), |_| ConsoleLine::Ls),
+            preceded(tag("dir "), map(not_line_ending, ConsoleLine::Directory)),
+            map(
+                tuple((map_res(digit1, str::parse), char(' '), not_line_ending)),
+                |(size, _, _name)| ConsoleLine::File { size },
+            ),
+        )),
     )(input)
 }
 
@@ -62,11 +52,10 @@ impl<'a> FileSystem<'a> {
         };
         let mut stack = vec![0];
         for command in commands.iter() {
-            let current_index = *stack.last().ok_or("Expected stack of directories")?;
             let dir_count = filesystem.nodes.len();
             let current_directory = filesystem
                 .nodes
-                .get_mut(current_index)
+                .get_mut(*stack.last().ok_or("Expected stack of directories")?)
                 .ok_or("Failed to find node in filesystem")?;
 
             match command {
