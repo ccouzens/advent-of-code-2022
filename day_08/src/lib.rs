@@ -105,16 +105,19 @@ pub fn part_two(input: &str) -> usize {
         .iter()
         .enumerate()
         .map(|(i, &h)| {
-            DIRECTIONS.iter().fold(1, |acc, &d| {
-                let mut count = 0;
-                for other in forest.line_of_sight(i, d) {
-                    count += 1;
-                    if other >= h {
-                        break;
+            DIRECTIONS
+                .iter()
+                .map(|&d| {
+                    let mut count = 0;
+                    for other in forest.line_of_sight(i, d) {
+                        count += 1;
+                        if other >= h {
+                            break;
+                        }
                     }
-                }
-                acc * count
-            })
+                    count
+                })
+                .product()
         })
         .max()
         .unwrap_or(0)
