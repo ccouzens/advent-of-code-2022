@@ -69,14 +69,10 @@ impl<'a> Iterator for TreesIter<'a> {
 
 impl Forest {
     fn new_from_str(input: &str) -> Self {
-        let mut width = 0;
-        let mut heights = Vec::new();
-        for line in input.lines() {
-            heights.extend(line.bytes().map(|d| d - b'0'));
-            width += 1;
+        Forest {
+            width: input.lines().count(),
+            heights: input.lines().flat_map(|l| l.bytes()).collect(),
         }
-
-        Forest { width, heights }
     }
 
     fn line_of_sight(&self, index: usize, direction: Direction) -> impl Iterator<Item = u8> + '_ {
