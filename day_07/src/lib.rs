@@ -3,10 +3,9 @@ use std::collections::HashMap;
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{char, digit1, newline, not_line_ending},
-    combinator::{map, map_res},
-    multi::separated_list1,
-    sequence::{preceded, tuple},
+    character::complete::{char, digit1, line_ending, not_line_ending},
+    combinator::{iterator, map, map_res},
+    sequence::{preceded, terminated, tuple},
     IResult,
 };
 
@@ -18,19 +17,16 @@ enum ConsoleLine<'a> {
     File { size: u64 },
 }
 
-fn parse_commands(input: &str) -> IResult<&str, Vec<ConsoleLine>> {
-    separated_list1(
-        newline,
-        alt((
-            preceded(tag("$ cd "), map(not_line_ending, ConsoleLine::Cd)),
-            map(tag("$ ls"), |_| ConsoleLine::Ls),
-            preceded(tag("dir "), map(not_line_ending, ConsoleLine::Directory)),
-            map(
-                tuple((map_res(digit1, str::parse), char(' '), not_line_ending)),
-                |(size, _, _name)| ConsoleLine::File { size },
-            ),
-        )),
-    )(input)
+fn parse_command(input: &str) -> IResult<&str, ConsoleLine> {
+    alt((
+        preceded(tag("$ cd "), map(not_line_ending, ConsoleLine::Cd)),
+        map(tag("$ ls"), |_| ConsoleLine::Ls),
+        preceded(tag("dir "), map(not_line_ending, ConsoleLine::Directory)),
+        map(
+            tuple((map_res(digit1, str::parse), char(' '), not_line_ending)),
+            |(size, _, _name)| ConsoleLine::File { size },
+        ),
+    ))(input)
 }
 
 #[derive(Debug, Default)]
@@ -51,12 +47,12 @@ impl<'a> FileSystem<'a> {
     }
 
     fn new_from_observations(input: &'a str) -> Result<Self, &'static str> {
-        let commands = parse_commands(input).map_err(|_| "Error parsing input")?.1;
+        let mut command_iter = iterator(input, terminated(parse_command, line_ending));
         let mut filesystem = FileSystem {
             nodes: vec![FSTreeDirectory::default()],
         };
         let mut stack = vec![0];
-        for command in commands.iter() {
+        for command in &mut command_iter {
             let dir_count = filesystem.nodes.len();
             let current_index = *stack.last().ok_or("Expected stack of directories")?;
             let current_directory = filesystem.dir_at_index(current_index)?;
