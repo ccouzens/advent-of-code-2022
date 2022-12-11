@@ -83,9 +83,8 @@ impl Position {
     }
 }
 
-fn rope_simulation(input: &str, rope_length: usize) -> usize {
+fn rope_simulation(input: &str, rope: &mut [Position]) -> usize {
     let mut motions_iterator = iterator(input, terminated(parse_motion, line_ending));
-    let mut rope = vec![Position::default(); rope_length];
     let mut visited = BTreeSet::new();
     for direction in &mut motions_iterator.flatten() {
         let mut previous_knot = None;
@@ -108,11 +107,11 @@ fn rope_simulation(input: &str, rope_length: usize) -> usize {
 }
 
 pub fn part_one(input: &str) -> usize {
-    rope_simulation(input, 2)
+    rope_simulation(input, &mut [Position::default(); 2])
 }
 
 pub fn part_two(input: &str) -> usize {
-    rope_simulation(input, 10)
+    rope_simulation(input, &mut [Position::default(); 10])
 }
 
 #[cfg(test)]
