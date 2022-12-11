@@ -1,4 +1,4 @@
-use std::{cmp::Ordering::*, collections::BTreeSet, iter::repeat};
+use std::{cmp::Ordering::*, collections::BTreeSet};
 
 use nom::{
     branch::alt,
@@ -24,9 +24,12 @@ struct Motion {
     steps: usize,
 }
 
-impl Motion {
-    fn iter(&self) -> impl Iterator<Item = Direction> {
-        repeat(self.direction).take(self.steps)
+impl Iterator for Motion {
+    type Item = Direction;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.steps = self.steps.checked_sub(1)?;
+        Some(self.direction)
     }
 }
 
@@ -84,7 +87,7 @@ fn rope_simulation(input: &str, rope_length: usize) -> usize {
     let mut motions_iterator = iterator(input, terminated(parse_motion, line_ending));
     let mut rope = vec![Position::default(); rope_length];
     let mut visited = BTreeSet::new();
-    for direction in &mut motions_iterator.flat_map(|m| m.iter()) {
+    for direction in &mut motions_iterator.flatten() {
         let mut previous_knot = None;
         for knot in rope.iter_mut() {
             match previous_knot {
