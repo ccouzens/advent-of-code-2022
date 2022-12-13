@@ -55,10 +55,10 @@ fn traverse_backwards(input: &str, part_two: bool) -> Result<usize, &'static str
         for &(x, y) in take(&mut next_positions).iter() {
             if let Some(&height) = height_map.heights.get(y).and_then(|row| row.get(x)) {
                 for &neighbour in [
-                    (x, y.saturating_sub(1)),
+                    (x, y.wrapping_sub(1)),
                     (x + 1, y),
                     (x, y + 1),
-                    (x.saturating_sub(1), y),
+                    (x.wrapping_sub(1), y),
                 ]
                 .iter()
                 {
