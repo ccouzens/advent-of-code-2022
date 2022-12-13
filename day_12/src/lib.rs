@@ -45,15 +45,14 @@ fn traverse_backwards(input: &str, part_two: bool) -> Result<usize, &'static str
     let height_map = HeightMap::try_from(input)?;
     let mut visited_positions: BTreeSet<(usize, usize)> =
         [height_map.end].iter().cloned().collect();
-    let mut next_positions: BTreeSet<(usize, usize)> = [height_map.end].iter().cloned().collect();
+    let mut next_positions = visited_positions.clone();
     let mut steps = 0;
     loop {
         steps += 1;
         if next_positions.is_empty() {
             return Err("No where left to walk");
         }
-        let mut next_next_positions = BTreeSet::new();
-        for &(x, y) in next_positions.iter() {
+        for &(x, y) in take(&mut next_positions).iter() {
             if let Some(&height) = height_map.heights.get(y).and_then(|row| row.get(x)) {
                 for &neighbour in [
                     (x, y.saturating_sub(1)),
@@ -69,7 +68,7 @@ fn traverse_backwards(input: &str, part_two: bool) -> Result<usize, &'static str
                         .and_then(|row| row.get(neighbour.0))
                     {
                         if neighbour_height + 1 >= height && visited_positions.insert(neighbour) {
-                            next_next_positions.insert(neighbour);
+                            next_positions.insert(neighbour);
                             if part_two && neighbour_height == 0 || neighbour == height_map.start {
                                 return Ok(steps);
                             }
@@ -78,7 +77,6 @@ fn traverse_backwards(input: &str, part_two: bool) -> Result<usize, &'static str
                 }
             }
         }
-        next_positions = take(&mut next_next_positions);
     }
 }
 
