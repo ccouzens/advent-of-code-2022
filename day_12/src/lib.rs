@@ -41,18 +41,19 @@ impl TryFrom<&str> for HeightMap {
     }
 }
 
-fn traverse_backwards(input: &str, part_two: bool) -> Result<usize, &'static str> {
-    let height_map = HeightMap::try_from(input)?;
-    let mut visited_positions: BTreeSet<(usize, usize)> =
-        [height_map.end].iter().cloned().collect();
-    let mut next_positions = visited_positions.clone();
+fn traverse_backwards(
+    height_map: &HeightMap,
+    reached_start: impl Fn(usize, usize, u8) -> bool,
+) -> Result<usize, &'static str> {
+    let mut visited: BTreeSet<(usize, usize)> = [height_map.end].iter().cloned().collect();
+    let mut recently_visited: Vec<(usize, usize)> = visited.iter().cloned().collect();
     let mut steps = 0;
     loop {
         steps += 1;
-        if next_positions.is_empty() {
+        if recently_visited.is_empty() {
             return Err("No where left to walk");
         }
-        for &(x, y) in take(&mut next_positions).iter() {
+        for &(x, y) in take(&mut recently_visited).iter() {
             if let Some(&height) = height_map.heights.get(y).and_then(|row| row.get(x)) {
                 for &neighbour in [
                     (x, y.wrapping_sub(1)),
@@ -67,9 +68,9 @@ fn traverse_backwards(input: &str, part_two: bool) -> Result<usize, &'static str
                         .get(neighbour.1)
                         .and_then(|row| row.get(neighbour.0))
                     {
-                        if neighbour_height + 1 >= height && visited_positions.insert(neighbour) {
-                            next_positions.insert(neighbour);
-                            if part_two && neighbour_height == 0 || neighbour == height_map.start {
+                        if neighbour_height + 1 >= height && visited.insert(neighbour) {
+                            recently_visited.push(neighbour);
+                            if reached_start(neighbour.0, neighbour.1, neighbour_height) {
                                 return Ok(steps);
                             }
                         }
@@ -81,11 +82,17 @@ fn traverse_backwards(input: &str, part_two: bool) -> Result<usize, &'static str
 }
 
 pub fn part_one(input: &str) -> Result<usize, &'static str> {
-    traverse_backwards(input, false)
+    let height_map = HeightMap::try_from(input)?;
+
+    traverse_backwards(&height_map, |x, y, _| {
+        x == height_map.start.0 && y == height_map.start.1
+    })
 }
 
 pub fn part_two(input: &str) -> Result<usize, &'static str> {
-    traverse_backwards(input, true)
+    let height_map = HeightMap::try_from(input)?;
+
+    traverse_backwards(&height_map, |_, _, height| height == 0)
 }
 
 #[cfg(test)]
