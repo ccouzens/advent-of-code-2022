@@ -11,7 +11,7 @@ use nom::{
 };
 use std::cmp::Ordering::*;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum Packet {
     List(Vec<Packet>),
     Integer(u8),
@@ -35,6 +35,19 @@ impl Packet {
 
     fn parse(input: &str) -> IResult<&str, Self> {
         alt((Self::parse_integer, Self::parse_list))(input)
+    }
+
+    fn parse_all_iterator<'a>(
+        input: &'a str,
+    ) -> ParserIterator<
+        &'a str,
+        nom::error::Error<&'a str>,
+        impl FnMut(&'a str) -> IResult<&'a str, Self>,
+    > {
+        iterator(
+            input,
+            terminated(Self::parse, take_while_m_n(1, 2, |c| c == '\n')),
+        )
     }
 }
 
@@ -71,7 +84,7 @@ impl PacketPair {
     fn parse(input: &str) -> IResult<&str, Self> {
         map(
             tuple((Packet::parse, newline, Packet::parse)),
-            |(left, _, right)| PacketPair { left, right },
+            |(left, _, right)| Self { left, right },
         )(input)
     }
 
@@ -80,7 +93,7 @@ impl PacketPair {
     ) -> ParserIterator<
         &'a str,
         nom::error::Error<&'a str>,
-        impl FnMut(&'a str) -> IResult<&'a str, PacketPair>,
+        impl FnMut(&'a str) -> IResult<&'a str, Self>,
     > {
         iterator(
             input,
@@ -94,10 +107,28 @@ impl PacketPair {
 }
 
 pub fn part_one(input: &str) -> usize {
-    let mut iter = PacketPair::parser_iterator(input);
-    zip(1.., &mut iter)
+    zip(1.., &mut PacketPair::parser_iterator(input))
         .filter_map(|(i, pair)| pair.is_ordered().then_some(i))
         .sum()
+}
+
+pub fn part_two(input: &str) -> usize {
+    let divider_a = Packet::List(vec![Packet::List(vec![Packet::Integer(2)])]);
+    let divider_b = Packet::List(vec![Packet::List(vec![Packet::Integer(6)])]);
+
+    let mut packets: Vec<Packet> = Packet::parse_all_iterator(input).collect();
+    packets.push(divider_a.clone());
+    packets.push(divider_b.clone());
+
+    packets.sort_unstable();
+    packets
+        .binary_search(&divider_a)
+        .map(|i| i + 1)
+        .unwrap_or(0)
+        * packets
+            .binary_search(&divider_b)
+            .map(|i| i + 1)
+            .unwrap_or(0)
 }
 
 #[cfg(test)]
@@ -112,5 +143,15 @@ mod tests {
     #[test]
     fn challenge_part_one() {
         assert_eq!(part_one(include_str!("../challenge.txt")), 5882);
+    }
+
+    #[test]
+    fn example_part_two() {
+        assert_eq!(part_two(include_str!("../example.txt")), 140);
+    }
+
+    #[test]
+    fn challenge_part_two() {
+        assert_eq!(part_two(include_str!("../challenge.txt")), 24948);
     }
 }
