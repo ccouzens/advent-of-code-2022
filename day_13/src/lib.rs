@@ -19,7 +19,7 @@ enum Packet {
 
 impl Packet {
     fn parse_integer(input: &str) -> IResult<&str, Self> {
-        map_res(digit1, |d| str::parse(d).map(Packet::Integer))(input)
+        map_res(digit1, |d| str::parse(d).map(Self::Integer))(input)
     }
 
     fn parse_list(input: &str) -> IResult<&str, Self> {
@@ -29,7 +29,7 @@ impl Packet {
                 separated_list0(char(','), Self::parse),
                 char(']'),
             ),
-            Packet::List,
+            Self::List,
         )(input)
     }
 
