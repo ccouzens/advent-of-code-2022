@@ -137,40 +137,26 @@ impl Cave {
         self.rocks.contains(&coord) || self.sand.contains(&coord)
     }
 
-    fn drop_sand(&mut self) -> bool {
-        let mut c = Coordinate { x: 500, y: 0 };
-        while c.y <= self.max_y {
-            match (
-                self.is_blocked(Coordinate {
-                    x: c.x - 1,
-                    y: c.y + 1,
-                }),
-                self.is_blocked(Coordinate { x: c.x, y: c.y + 1 }),
-                self.is_blocked(Coordinate {
-                    x: c.x + 1,
-                    y: c.y + 1,
-                }),
-            ) {
-                (_, false, _) => c = Coordinate { x: c.x, y: c.y + 1 },
-                (false, true, _) => {
-                    c = Coordinate {
-                        x: c.x - 1,
-                        y: c.y + 1,
-                    }
-                }
-                (true, true, false) => {
-                    c = Coordinate {
-                        x: c.x + 1,
-                        y: c.y + 1,
-                    }
-                }
-                (true, true, true) => {
-                    self.sand.insert(c);
-                    return true;
-                }
-            }
+    fn next_sand_position(&self, c: Coordinate) -> Option<Coordinate> {
+        let below = Coordinate { x: c.x, y: c.y + 1 };
+        if !self.is_blocked(below) {
+            return Some(below);
         }
-        false
+        let below_left = Coordinate {
+            x: c.x - 1,
+            y: c.y + 1,
+        };
+        if !self.is_blocked(below_left) {
+            return Some(below_left);
+        }
+        let below_right = Coordinate {
+            x: c.x + 1,
+            y: c.y + 1,
+        };
+        if !self.is_blocked(below_right) {
+            return Some(below_right);
+        }
+        None
     }
 
     fn draw(&self, mut w: impl std::io::Write) -> std::io::Result<()> {
@@ -200,8 +186,22 @@ impl Cave {
 pub fn part_one(input: &str) -> usize {
     let mut cave = Cave::parse(input).unwrap().1;
     let mut counter = 0;
-    while cave.drop_sand() {counter += 1}
-    counter
+    loop {
+        let mut c = Coordinate { x: 500, y: 0 };
+        loop {
+            match cave.next_sand_position(c) {
+                Some(n) => c = n,
+                None => {
+                    cave.sand.insert(c);
+                    counter += 1;
+                    break;
+                }
+            }
+            if c.y > cave.max_y {
+                return counter;
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -217,5 +217,4 @@ mod tests {
     fn challenge_part_one() {
         assert_eq!(part_one(include_str!("../challenge.txt")), 737);
     }
-
 }
