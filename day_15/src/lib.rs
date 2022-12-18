@@ -74,11 +74,32 @@ impl Sensor {
     }
 }
 
+fn normalize_ranges(mut ranges: Vec<RangeInclusive<i32>>) -> Vec<RangeInclusive<i32>> {
+    ranges.sort_by_key(|r| *r.start());
+    let mut normalized: Vec<RangeInclusive<i32>> = Vec::new();
+    for new_range in ranges.drain(..) {
+        if new_range.is_empty() {
+            continue;
+        }
+        if let Some(normalized_range) = normalized.last_mut() {
+            if new_range.start() <= normalized_range.end() {
+                *normalized_range =
+                    *normalized_range.start()..=i32::max(*normalized_range.end(), *new_range.end())
+            } else {
+                normalized.push(new_range);
+            }
+        } else {
+            normalized.push(new_range);
+        }
+    }
+    normalized
+}
+
 pub fn part_one(input: &str, row: i32) -> usize {
-    let mut no_beacon = BTreeSet::new();
+    let mut no_beacon_ranges = Vec::new();
     let mut beacons_in_row = BTreeSet::new();
     for sensor in &mut Sensor::parse_all_iterator(input) {
-        no_beacon.extend(
+        no_beacon_ranges.push(
             sensor
                 .location
                 .manhatten_points_at_row(sensor.beacon_distance(), row),
@@ -87,7 +108,13 @@ pub fn part_one(input: &str, row: i32) -> usize {
             beacons_in_row.insert(sensor.beacon.x);
         }
     }
-    no_beacon.len() - beacons_in_row.len()
+    let no_beacon_ranges = normalize_ranges(no_beacon_ranges);
+
+    no_beacon_ranges
+        .iter()
+        .map(|r| r.clone().count())
+        .sum::<usize>()
+        - beacons_in_row.len()
 }
 
 #[cfg(test)]
