@@ -26,7 +26,7 @@ impl Coordinate {
         )(input)
     }
 
-    fn iter_to_other(self, other: Self) -> impl Iterator<Item = Self> {
+    fn iter_straight_line_to_other(self, other: Self) -> impl Iterator<Item = Self> {
         (0..).map_while(
             move |i| match (self.x.cmp(&other.x), self.y.cmp(&other.y)) {
                 (Less, Less) => None,
@@ -79,6 +79,8 @@ impl Coordinate {
     }
 }
 
+const SAND_SOURCE: Coordinate = Coordinate { x: 500, y: 0 };
+
 #[derive(Debug)]
 struct RockStructure {
     coordinates: Vec<Coordinate>,
@@ -98,7 +100,7 @@ impl RockStructure {
             .scan(None, |state, &coord| {
                 let previous_state = state.unwrap_or(coord);
                 *state = Some(coord);
-                Some(coord.iter_to_other(previous_state))
+                Some(coord.iter_straight_line_to_other(previous_state))
             })
             .flatten()
     }
@@ -116,9 +118,9 @@ struct Cave {
 impl Cave {
     fn new(rocks: BTreeSet<Coordinate>) -> Self {
         Self {
-            max_y: rocks.iter().map(|c| c.y).max().unwrap_or(0),
-            min_x: rocks.iter().map(|c| c.x - 1).min().unwrap_or(500),
-            max_x: rocks.iter().map(|c| c.x + 1).max().unwrap_or(500),
+            max_y: rocks.iter().map(|c| c.y).max().unwrap_or(SAND_SOURCE.y),
+            min_x: rocks.iter().map(|c| c.x - 1).min().unwrap_or(SAND_SOURCE.x),
+            max_x: rocks.iter().map(|c| c.x + 1).max().unwrap_or(SAND_SOURCE.x),
             rocks,
             sand: BTreeSet::new(),
         }
@@ -134,7 +136,7 @@ impl Cave {
     }
 
     fn is_blocked(&self, coord: Coordinate) -> bool {
-        self.rocks.contains(&coord) || self.sand.contains(&coord)
+        coord.y >= self.max_y + 2 || self.rocks.contains(&coord) || self.sand.contains(&coord)
     }
 
     fn next_sand_position(&self, c: Coordinate) -> Option<Coordinate> {
@@ -170,7 +172,7 @@ impl Cave {
                         '#'
                     } else if self.sand.contains(&c) {
                         'o'
-                    } else if x == 500 && y == 0 {
+                    } else if c == SAND_SOURCE {
                         'p'
                     } else {
                         ' '
@@ -187,7 +189,7 @@ pub fn part_one(input: &str) -> usize {
     let mut cave = Cave::parse(input).unwrap().1;
     let mut counter = 0;
     loop {
-        let mut c = Coordinate { x: 500, y: 0 };
+        let mut c = SAND_SOURCE;
         loop {
             match cave.next_sand_position(c) {
                 Some(n) => c = n,
@@ -199,6 +201,28 @@ pub fn part_one(input: &str) -> usize {
             }
             if c.y > cave.max_y {
                 return counter;
+            }
+        }
+    }
+}
+
+pub fn part_two(input: &str) -> usize {
+    let mut cave = Cave::parse(input).unwrap().1;
+    let mut counter = 0;
+    loop {
+        let mut c = SAND_SOURCE;
+        loop {
+            if cave.sand.contains(&SAND_SOURCE) {
+                cave.draw(std::io::stdout()).unwrap();
+                return counter;
+            }
+            match cave.next_sand_position(c) {
+                Some(n) => c = n,
+                None => {
+                    cave.sand.insert(c);
+                    counter += 1;
+                    break;
+                }
             }
         }
     }
@@ -216,5 +240,15 @@ mod tests {
     #[test]
     fn challenge_part_one() {
         assert_eq!(part_one(include_str!("../challenge.txt")), 737);
+    }
+
+    #[test]
+    fn example_part_two() {
+        assert_eq!(part_two(include_str!("../example.txt")), 93);
+    }
+
+    #[test]
+    fn challenge_part_two() {
+        assert_eq!(part_two(include_str!("../challenge.txt")), 28145);
     }
 }
