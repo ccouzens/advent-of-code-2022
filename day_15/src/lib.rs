@@ -1,5 +1,3 @@
-use std::{collections::BTreeSet, ops::RangeInclusive};
-
 use nom::{
     bytes::{complete::tag, streaming::take_while1},
     character::complete::newline,
@@ -7,6 +5,8 @@ use nom::{
     sequence::{terminated, tuple},
     IResult,
 };
+use rayon::prelude::*;
+use std::{collections::BTreeSet, ops::RangeInclusive};
 
 #[derive(Debug, Clone, Copy)]
 struct Location {
@@ -119,19 +119,19 @@ pub fn part_one(input: &str, row: i64) -> usize {
 
 pub fn part_two(input: &str, search_limit: i64) -> i64 {
     let sensors: Vec<Sensor> = Sensor::parse_all_iterator(input).collect();
-    for row in 0..=search_limit {
-        let covered_ranges = sensors
-            .iter()
-            .map(|s| s.location.manhatten_points_at_row(s.beacon_distance(), row))
-            .collect();
-        let covered_ranges = normalize_ranges(covered_ranges);
-        for r in covered_ranges.iter() {
-            if (-1..search_limit).contains(r.end()) {
-                return (*r.end() + 1) * 4000000 + row;
-            }
-        }
-    }
-    0
+    (0..=search_limit)
+        .into_par_iter()
+        .find_map_first(|row| {
+            let covered_ranges = sensors
+                .iter()
+                .map(|s| s.location.manhatten_points_at_row(s.beacon_distance(), row))
+                .collect();
+            let covered_ranges = normalize_ranges(covered_ranges);
+            covered_ranges.iter().find_map(|r| {
+                ((-1..search_limit).contains(r.end())).then(|| (*r.end() + 1) * 4000000 + row)
+            })
+        })
+        .unwrap_or(0)
 }
 
 #[cfg(test)]
