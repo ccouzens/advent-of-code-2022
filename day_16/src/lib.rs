@@ -10,6 +10,7 @@ use nom::{
 
 use std::{
     collections::{hash_map, HashMap, HashSet},
+    iter::once,
     mem::take,
 };
 
@@ -106,24 +107,85 @@ impl<'a> World<'a> {
     }
 }
 
-pub fn part_one(input: &str) -> u16 {
-    #[derive(Debug)]
-    struct StackItem<'a> {
-        name: &'a str,
-        neighbour_iter: hash_map::Iter<'a, &'a str, u16>,
-        acc_flow: u16,
-        time_remaining: u16,
-    }
-
-    let world = World::prepare(input);
+#[derive(Debug)]
+struct StackItem<'a> {
+    name: &'a str,
+    neighbour_iter: hash_map::Iter<'a, &'a str, u16>,
+    acc_flow: u16,
+    time_remaining: u16,
+}
+fn best_one_person(world: &World, time_remaining: u16, valves_to_avoid: &[&str]) -> u16 {
     let mut best = 0;
-    let first = world.valves.get(START_VALVE).unwrap();
     let mut stack = vec![StackItem {
         name: START_VALVE,
-        neighbour_iter: first.neighbour_distance.iter(),
+        neighbour_iter: world
+            .valves
+            .get(START_VALVE)
+            .unwrap()
+            .neighbour_distance
+            .iter(),
         acc_flow: 0,
-        time_remaining: 30,
+        time_remaining,
     }];
+
+    while let Some(mut bottom) = stack.pop() {
+        let time_remaining = bottom.time_remaining;
+        let acc_flow = bottom.acc_flow;
+
+        if let Some(new_stack_item) = bottom
+            .neighbour_iter
+            .by_ref()
+            .filter_map(|(&neighbour_name, &neighbour_distance)| {
+                if stack.iter().any(|s| s.name == neighbour_name)
+                    || valves_to_avoid.binary_search(&neighbour_name).is_ok()
+                {
+                    return None;
+                }
+                let time_remaining = time_remaining.checked_sub(neighbour_distance + 1)?;
+                let valve = world.valves.get(neighbour_name)?;
+                let acc_flow = acc_flow + time_remaining * valve.flow_rate;
+                Some(StackItem {
+                    name: neighbour_name,
+                    neighbour_iter: valve.neighbour_distance.iter(),
+                    acc_flow,
+                    time_remaining,
+                })
+            })
+            .next()
+        {
+            stack.push(bottom);
+            best = u16::max(best, new_stack_item.acc_flow);
+            stack.push(new_stack_item);
+        }
+    }
+
+    best
+}
+
+pub fn part_one(input: &str) -> u16 {
+    let world = World::prepare(input);
+    best_one_person(&world, 30, &[])
+}
+
+pub fn part_two(input: &str) -> u16 {
+    let world = World::prepare(input);
+
+    let mut best = 0;
+    let mut stack = vec![StackItem {
+        name: START_VALVE,
+        neighbour_iter: world
+            .valves
+            .get(START_VALVE)
+            .unwrap()
+            .neighbour_distance
+            .iter(),
+        acc_flow: 0,
+        time_remaining: 26,
+    }];
+
+    // an elephant always remembers
+    let mut elephant_memoization = HashMap::<Vec<&str>, u16>::new();
+
     while let Some(mut bottom) = stack.pop() {
         let time_remaining = bottom.time_remaining;
         let acc_flow = bottom.acc_flow;
@@ -148,10 +210,19 @@ pub fn part_one(input: &str) -> u16 {
             .next()
         {
             stack.push(bottom);
-            best = u16::max(best, new_stack_item.acc_flow);
+            let mut visited = once(&new_stack_item)
+                .chain(stack.iter())
+                .map(|s| s.name)
+                .collect::<Vec<_>>();
+            visited.sort_unstable();
+            let elephant = *elephant_memoization
+                .entry(visited.clone())
+                .or_insert_with(|| best_one_person(&world, 26, &visited));
+            best = u16::max(best, new_stack_item.acc_flow + elephant);
             stack.push(new_stack_item);
         }
     }
+
     best
 }
 
@@ -167,5 +238,15 @@ mod tests {
     #[test]
     fn challenge_part_one() {
         assert_eq!(part_one(include_str!("../challenge.txt")), 1789);
+    }
+
+    #[test]
+    fn example_part_two() {
+        assert_eq!(part_two(include_str!("../example.txt")), 1707);
+    }
+
+    #[test]
+    fn challenge_part_two() {
+        assert_eq!(part_two(include_str!("../challenge.txt")), 2496);
     }
 }
