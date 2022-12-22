@@ -429,4 +429,141 @@ mod tests {
             Some(5031)
         );
     }
+
+    #[test]
+    fn challenge_part_two() {
+        assert_eq!(
+            secret(include_str!("../challenge.txt"), |p| match p {
+                Position {
+                    row: 1,
+                    column: 51..=100,
+                    facing: 3,
+                } => Some(Position {
+                    row: p.column - 51 + 151,
+                    column: 1,
+                    facing: 0
+                }),
+                Position {
+                    row: 1,
+                    column: 101..=150,
+                    facing: 3,
+                } => Some(Position {
+                    row: 200,
+                    column: p.column - 100,
+                    facing: 3
+                }),
+                Position {
+                    row: 1..=50,
+                    column: 51,
+                    facing: 2,
+                } => Some(Position {
+                    row: 50 - p.row + 101,
+                    column: 1,
+                    facing: 0
+                }),
+                Position {
+                    row: 1..=50,
+                    column: 150,
+                    facing: 0,
+                } => Some(Position {
+                    row: 50 - p.row + 101,
+                    column: 100,
+                    facing: 2
+                }),
+                Position {
+                    row: 50,
+                    column: 101..=150,
+                    facing: 1,
+                } => Some(Position {
+                    row: p.column - 50,
+                    column: 100,
+                    facing: 2
+                }),
+                Position {
+                    row: 51..=100,
+                    column: 51,
+                    facing: 2,
+                } => Some(Position {
+                    row: 101,
+                    column: p.row - 50,
+                    facing: 1
+                }),
+                Position {
+                    row: 51..=100,
+                    column: 100,
+                    facing: 0,
+                } => Some(Position {
+                    row: 50,
+                    column: p.row + 50,
+                    facing: 3
+                }),
+                Position {
+                    row: 101,
+                    column: 1..=50,
+                    facing: 3,
+                } => Some(Position {
+                    row: p.column + 50,
+                    column: 51,
+                    facing: 0
+                }),
+                Position {
+                    row: 101..=150,
+                    column: 1,
+                    facing: 2,
+                } => Some(Position {
+                    row: 150 - p.row + 1,
+                    column: 51,
+                    facing: 0
+                }),
+                Position {
+                    row: 101..=150,
+                    column: 100,
+                    facing: 0,
+                } => Some(Position {
+                    row: 150 - p.row + 1,
+                    column: 150,
+                    facing: 2
+                }),
+                Position {
+                    row: 150,
+                    column: 51..=100,
+                    facing: 1,
+                } => Some(Position {
+                    row: 100 + p.column,
+                    column: 50,
+                    facing: 2
+                }),
+                Position {
+                    row: 151..=200,
+                    column: 1,
+                    facing: 2,
+                } => Some(Position {
+                    row: 1,
+                    column: p.row - 100,
+                    facing: 1
+                }),
+                Position {
+                    row: 151..=200,
+                    column: 50,
+                    facing: 0,
+                } => Some(Position {
+                    row: 150,
+                    column: p.row - 100,
+                    facing: 3
+                }),
+                Position {
+                    row: 200,
+                    column: 1..=50,
+                    facing: 1,
+                } => Some(Position {
+                    row: 1,
+                    column: p.column + 100,
+                    facing: 1
+                }),
+
+                _ => None,
+            }),
+            Some(153203)
+        );
+    }
 }
