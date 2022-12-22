@@ -293,4 +293,140 @@ mod tests {
             Some(149138)
         );
     }
+
+    #[test]
+    fn example_part_two() {
+        assert_eq!(
+            secret(include_str!("../example.txt"), |p| match p {
+                Position {
+                    row: 1,
+                    column: 9..=12,
+                    facing: 3,
+                } => Some(Position {
+                    row: 5,
+                    facing: 1,
+                    column: 12 - p.column + 1
+                }),
+                Position {
+                    row: 1..=4,
+                    column: 9,
+                    facing: 2,
+                } => Some(Position {
+                    row: 5,
+                    facing: 1,
+                    column: p.row + 4
+                }),
+                Position {
+                    row: 1..=4,
+                    column: 12,
+                    facing: 0,
+                } => Some(Position {
+                    facing: 2,
+                    column: 16,
+                    row: 4 - p.row + 8 + 1
+                }),
+                Position {
+                    row: 5,
+                    column: 1..=4,
+                    facing: 3,
+                } => Some(Position {
+                    facing: 1,
+                    row: 1,
+                    column: 4 - p.column + 8 + 1
+                }),
+                Position {
+                    row: 5,
+                    column: 5..=8,
+                    facing: 3,
+                } => Some(Position {
+                    facing: 0,
+                    column: 9,
+                    row: p.column - 4
+                }),
+                Position {
+                    row: 5..=8,
+                    column: 1,
+                    facing: 2,
+                } => Some(Position {
+                    facing: 3,
+                    row: 12,
+                    column: 8 - p.row + 13
+                }),
+                Position {
+                    row: 5..=8,
+                    column: 12,
+                    facing: 0,
+                } => Some(Position {
+                    facing: 1,
+                    row: 9,
+                    column: 8 - p.row + 13
+                }),
+                Position {
+                    row: 8,
+                    column: 1..=4,
+                    facing: 1,
+                } => Some(Position {
+                    facing: 3,
+                    row: 12,
+                    column: 4 - p.column + 9
+                }),
+                Position {
+                    row: 8,
+                    column: 5..=9,
+                    facing: 1,
+                } => Some(Position {
+                    facing: 2,
+                    column: 9,
+                    row: 8 - p.column + 9,
+                }),
+                Position {
+                    row: 9,
+                    column: 13..=16,
+                    facing: 3,
+                } => Some(Position {
+                    facing: 0,
+                    column: 12,
+                    row: 16 - p.column + 5,
+                }),
+                Position {
+                    row: 9..=12,
+                    column: 9,
+                    facing: 2,
+                } => Some(Position {
+                    row: 8,
+                    column: 12 - p.row + 5,
+                    facing: 3
+                }),
+                Position {
+                    row: 9..=12,
+                    column: 16,
+                    facing: 0,
+                } => Some(Position {
+                    row: 12 - p.row + 1,
+                    column: 12,
+                    facing: 2
+                }),
+                Position {
+                    row: 12,
+                    column: 9..=12,
+                    facing: 1,
+                } => Some(Position {
+                    row: 8,
+                    column: 12 - p.column + 1,
+                    facing: 3
+                }),
+                Position {
+                    row: 12,
+                    column: 13..=16,
+                    facing: 1,
+                } => Some(Position {
+                    row: 16 - p.column + 5,
+                    column: 1,
+                    facing: 0
+                }),
+                _ => None,
+            }),
+            Some(5031)
+        );
+    }
 }
