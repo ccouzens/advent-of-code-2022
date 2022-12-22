@@ -53,76 +53,81 @@ impl Notes {
     }
 }
 
-struct Simulation<'a> {
-    notes: &'a Notes,
-    path_iter: slice::Iter<'a, Direction>,
+#[derive(Clone, Copy, Debug)]
+pub struct Position {
     row: usize,
     column: usize,
     facing: usize,
 }
 
+struct Simulation<'a> {
+    notes: &'a Notes,
+    path_iter: slice::Iter<'a, Direction>,
+    position: Position,
+    warping_rules: &'a fn(Position) -> Option<Position>,
+}
+
 impl<'a> Simulation<'a> {
-    fn new(notes: &'a Notes) -> Self {
+    fn new(notes: &'a Notes, warping_rules: &'a fn(Position) -> Option<Position>) -> Self {
         Simulation {
             notes,
             path_iter: notes.path.iter(),
-            row: 1,
-            column: notes
-                .map
-                .get(0)
-                .unwrap()
-                .iter()
-                .position(|&t| t == Some(Tile::Open))
-                .unwrap()
-                + 1,
-            facing: 0,
+            position: Position {
+                row: 1,
+                column: notes
+                    .map
+                    .get(0)
+                    .unwrap()
+                    .iter()
+                    .position(|&t| t == Some(Tile::Open))
+                    .unwrap()
+                    + 1,
+                facing: 0,
+            },
+            warping_rules,
         }
     }
 
-    fn new_coords(&self, old_column: usize, old_row: usize) -> (usize, usize) {
-        let rows = self.notes.map.len();
-        let columns = self.notes.map[old_row - 1].len();
-        match self.facing {
+    fn new_coords(&self, old: Position) -> Position {
+        (self.warping_rules)(old).unwrap_or(match old.facing {
             // right (column +)
-            0 => ((old_column % columns) + 1, old_row),
+            0 => Position {
+                column: old.column + 1,
+                ..old
+            },
             // down (row +)
-            1 => (old_column, (old_row % rows) + 1),
+            1 => Position {
+                row: old.row + 1,
+                ..old
+            },
             // left (column -)
-            2 => (
-                if old_column == 1 {
-                    columns
-                } else {
-                    old_column - 1
-                },
-                old_row,
-            ),
+            2 => Position {
+                column: old.column - 1,
+                ..old
+            },
             // up (row -)
-            3 => (old_column, if old_row == 1 { rows } else { old_row - 1 }),
-            _ => (old_column, old_row),
-        }
+            3 => Position {
+                row: old.row - 1,
+                ..old
+            },
+            _ => old,
+        })
     }
 
     fn step_forward(&mut self) -> bool {
-        let mut column = self.column;
-        let mut row = self.row;
-        loop {
-            (column, row) = self.new_coords(column, row);
-            match self
-                .notes
-                .map
-                .get(row - 1)
-                .and_then(|row| row.get(column - 1))
-                .and_then(Option::as_ref)
-            {
-                Some(Tile::Wall) => {
-                    return false;
-                }
-                Some(Tile::Open) => {
-                    self.row = row;
-                    self.column = column;
-                    return true;
-                }
-                None => {}
+        let position = self.new_coords(self.position);
+        match self
+            .notes
+            .map
+            .get(position.row - 1)
+            .and_then(|row| row.get(position.column - 1))
+            .and_then(Option::as_ref)
+            .unwrap()
+        {
+            Tile::Wall => false,
+            Tile::Open => {
+                self.position = position;
+                true
             }
         }
     }
@@ -134,10 +139,10 @@ impl<'a> Iterator for Simulation<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         match self.path_iter.next()? {
             Direction::Left => {
-                self.facing = (self.facing + 4 - 1) % 4;
+                self.position.facing = (self.position.facing + 4 - 1) % 4;
             }
             Direction::Right => {
-                self.facing = (self.facing + 1) % 4;
+                self.position.facing = (self.position.facing + 1) % 4;
             }
             Direction::Forward(c) => {
                 for _ in 0..*c {
@@ -148,13 +153,13 @@ impl<'a> Iterator for Simulation<'a> {
             }
         }
 
-        Some(self.row * 1000 + self.column * 4 + self.facing)
+        Some(self.position.row * 1000 + self.position.column * 4 + self.position.facing)
     }
 }
 
-pub fn part_one(input: &str) -> Option<usize> {
+pub fn secret(input: &str, warping_rules: fn(Position) -> Option<Position>) -> Option<usize> {
     let notes = Notes::parse_nom(input).ok()?.1;
-    let simulation = Simulation::new(&notes);
+    let simulation = Simulation::new(&notes, &warping_rules);
     simulation.last()
 }
 
@@ -164,11 +169,128 @@ mod tests {
 
     #[test]
     fn example_part_one() {
-        assert_eq!(part_one(include_str!("../example.txt")), Some(6032));
+        assert_eq!(
+            secret(include_str!("../example.txt"), |p| match p {
+                Position {
+                    row: 1,
+                    column: 9..=12,
+                    facing: 3,
+                } => Some(Position { row: 12, ..p }),
+                Position {
+                    row: 1..=4,
+                    column: 8,
+                    facing: 2,
+                } => Some(Position { column: 12, ..p }),
+                Position {
+                    row: 1..=4,
+                    column: 12,
+                    facing: 0,
+                } => Some(Position { column: 8, ..p }),
+                Position {
+                    row: 5,
+                    column: 0..=8,
+                    facing: 3,
+                } => Some(Position { row: 8, ..p }),
+                Position {
+                    row: 5..=8,
+                    column: 1,
+                    facing: 2,
+                } => Some(Position { column: 12, ..p }),
+                Position {
+                    row: 5..=8,
+                    column: 12,
+                    facing: 0,
+                } => Some(Position { column: 1, ..p }),
+                Position {
+                    row: 8,
+                    column: 1..=8,
+                    facing: 1,
+                } => Some(Position { row: 5, ..p }),
+
+                _ => None,
+            }),
+            Some(6032)
+        );
     }
 
     #[test]
     fn challenge_part_one() {
-        assert_eq!(part_one(include_str!("../challenge.txt")), Some(149138));
+        assert_eq!(
+            secret(include_str!("../challenge.txt"), |p| match p {
+                Position {
+                    row: 1,
+                    column: 51..=100,
+                    facing: 3,
+                } => Some(Position { row: 150, ..p }),
+                Position {
+                    row: 1,
+                    column: 101..=150,
+                    facing: 3,
+                } => Some(Position { row: 50, ..p }),
+                Position {
+                    row: 51..=100,
+                    column: 51,
+                    facing: 2,
+                } => Some(Position { column: 100, ..p }),
+                Position {
+                    row: 1..=50,
+                    column: 51,
+                    facing: 2,
+                } => Some(Position { column: 150, ..p }),
+                Position {
+                    row: 1..=50,
+                    column: 150,
+                    facing: 0,
+                } => Some(Position { column: 51, ..p }),
+                Position {
+                    row: 50,
+                    column: 101..=150,
+                    facing: 1,
+                } => Some(Position { row: 1, ..p }),
+                Position {
+                    row: 51..=100,
+                    column: 100,
+                    facing: 0,
+                } => Some(Position { column: 51, ..p }),
+                Position {
+                    row: 101,
+                    column: 1..=50,
+                    facing: 3,
+                } => Some(Position { row: 200, ..p }),
+                Position {
+                    row: 101..=150,
+                    column: 1,
+                    facing: 2,
+                } => Some(Position { column: 100, ..p }),
+                Position {
+                    row: 101..=150,
+                    column: 100,
+                    facing: 0,
+                } => Some(Position { column: 1, ..p }),
+                Position {
+                    row: 150,
+                    column: 51..=100,
+                    facing: 1,
+                } => Some(Position { row: 1, ..p }),
+                Position {
+                    row: 151..=200,
+                    column: 1,
+                    facing: 2,
+                } => Some(Position { column: 50, ..p }),
+                Position {
+                    row: 151..=200,
+                    column: 50,
+                    facing: 0,
+                } => Some(Position { column: 1, ..p }),
+                Position {
+                    row: 200,
+                    column: 1..=50,
+                    facing: 1,
+                } => Some(Position { row: 101, ..p }),
+
+                _ => None,
+            }),
+            Some(149138)
+        );
     }
 }
