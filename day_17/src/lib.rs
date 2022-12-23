@@ -1,3 +1,5 @@
+use std::collections::{hash_map, HashMap};
+
 #[derive(Clone, Copy)]
 struct RP {
     x: usize,
@@ -82,7 +84,7 @@ struct Simulation {
 impl Simulation {
     fn new(input: &str) -> Self {
         Self {
-            stopped_rocks: vec![],
+            stopped_rocks: Vec::new(),
             rock_cycle: 0,
             wind_cycle: 0,
             wind_directions: input
@@ -181,6 +183,48 @@ pub fn part_one(input: &str) -> usize {
     simulation.stopped_rocks.len()
 }
 
+pub fn part_two(input: &str) -> usize {
+    let mut simulation = Simulation::new(input);
+    let mut cycle_detector = HashMap::<(Vec<[bool; 7]>, usize, usize), (usize, u64)>::new();
+    let mut counter: u64 = 0;
+    let mut cave_height_increase = 0;
+    let goal: u64 = 1000000000000;
+    let mut jumped = false;
+    loop {
+        simulation.drop_rock();
+        counter += 1;
+        if !jumped {
+            if let Some(last_rows) = simulation
+                .stopped_rocks
+                .len()
+                .checked_sub(9)
+                .and_then(|s| simulation.stopped_rocks.get(s..))
+                .map(|s| s.to_vec())
+            {
+                match cycle_detector.entry((
+                    last_rows,
+                    simulation.rock_cycle,
+                    simulation.wind_cycle,
+                )) {
+                    hash_map::Entry::Occupied(o) => {
+                        let repeats = (goal - counter) / (counter - o.get().1);
+                        cave_height_increase +=
+                            repeats as usize * (simulation.stopped_rocks.len() - o.get().0);
+                        counter += repeats * (counter - o.get().1);
+                        jumped = true;
+                    }
+                    hash_map::Entry::Vacant(v) => {
+                        v.insert((simulation.stopped_rocks.len(), counter));
+                    }
+                }
+            }
+        }
+        if counter == goal {
+            return cave_height_increase + simulation.stopped_rocks.len();
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -193,5 +237,15 @@ mod tests {
     #[test]
     fn challenge_part_one() {
         assert_eq!(part_one(include_str!("../challenge.txt")), 3048);
+    }
+
+    #[test]
+    fn example_part_two() {
+        assert_eq!(part_two(include_str!("../example.txt")), 1514285714288);
+    }
+
+    #[test]
+    fn challenge_part_two() {
+        assert_eq!(part_two(include_str!("../challenge.txt")), 1504093567249);
     }
 }
