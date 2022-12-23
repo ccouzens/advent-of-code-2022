@@ -105,7 +105,8 @@ impl Grove {
         (min_x..=max_x).len() * (min_y..=max_y).len() - self.elves.len()
     }
 
-    fn follow_round(&mut self) {
+    fn follow_round(&mut self) -> bool {
+        let mut changes = false;
         let mut proposed_position_counts = BTreeMap::<Position, usize>::new();
         let mut proposed_moves = BTreeMap::<Position, Position>::new();
         for &elf in self.elves.iter() {
@@ -119,6 +120,7 @@ impl Grove {
         for (&original, &proposed) in proposed_moves.iter() {
             self.elves.insert(
                 if proposed_position_counts.get(&proposed).cloned() == Some(1) {
+                    changes = changes || proposed != original;
                     proposed
                 } else {
                     original
@@ -126,6 +128,7 @@ impl Grove {
             );
         }
         self.cycle = (self.cycle + 1) % 4;
+        changes
     }
 }
 
@@ -135,6 +138,15 @@ pub fn part_one(input: &str) -> usize {
         grove.follow_round();
     }
     grove.empty_tiles()
+}
+
+pub fn part_two(input: &str) -> usize {
+    let mut rounds = 1;
+    let mut grove = Grove::new(input);
+    while grove.follow_round() {
+        rounds += 1
+    }
+    rounds
 }
 
 #[cfg(test)]
@@ -149,5 +161,15 @@ mod tests {
     #[test]
     fn challenge_part_one() {
         assert_eq!(part_one(include_str!("../challenge.txt")), 4068);
+    }
+
+    #[test]
+    fn example_part_two() {
+        assert_eq!(part_two(include_str!("../example.txt")), 20);
+    }
+
+    #[test]
+    fn challenge_part_two() {
+        assert_eq!(part_two(include_str!("../challenge.txt")), 968);
     }
 }
