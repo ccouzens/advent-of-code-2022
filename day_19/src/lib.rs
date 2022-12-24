@@ -12,9 +12,9 @@ use rayon::prelude::*;
 
 #[derive(Debug, Hash, Eq, PartialEq)]
 struct Blueprint {
-    id: u16,
-    costs: [[u16; 4]; 4],
-    max_robots_required: [u16; 4],
+    id: u32,
+    costs: [[u32; 4]; 4],
+    max_robots_required: [u32; 4],
 }
 
 impl Blueprint {
@@ -87,7 +87,7 @@ impl Blueprint {
         )(input)
     }
 
-    fn geode_count(&self, rounds: u8) -> u16 {
+    fn geode_count(&self, rounds: u8) -> u32 {
         let start = World {
             robot_counts: [1, 0, 0, 0],
             resource_counts: [0, 0, 0, 0],
@@ -108,7 +108,7 @@ impl Blueprint {
 
             if i <= rounds - 2 {
                 next_possibilities.sort_by_cached_key(|p| {
-                    p.robot_counts.iter().sum::<u16>() + p.resource_counts.iter().sum::<u16>()
+                    p.robot_counts.iter().sum::<u32>() + p.resource_counts.iter().sum::<u32>()
                 });
                 next_possibilities = zip(
                     (0..next_possibilities.len()).rev(),
@@ -178,8 +178,8 @@ impl Blueprint {
 
 #[derive(Hash, Eq, PartialEq, Clone, Copy, Debug)]
 struct World<'a> {
-    robot_counts: [u16; 4],
-    resource_counts: [u16; 4],
+    robot_counts: [u32; 4],
+    resource_counts: [u32; 4],
     blueprint: &'a Blueprint,
 }
 
@@ -223,7 +223,7 @@ fn blueprints(input: &str) -> Vec<Blueprint> {
         .1
 }
 
-pub fn part_one(input: &str) -> u16 {
+pub fn part_one(input: &str) -> u32 {
     let blueprints = blueprints(input);
     blueprints
         .par_iter()
@@ -231,10 +231,10 @@ pub fn part_one(input: &str) -> u16 {
         .sum()
 }
 
-pub fn part_two(input: &str) -> u16 {
+pub fn part_two(input: &str) -> u32 {
     let blueprints = blueprints(input);
     blueprints
-        .iter()
+        .par_iter()
         .take(3)
         .map(|bp| bp.id * bp.geode_count(32))
         .product()
