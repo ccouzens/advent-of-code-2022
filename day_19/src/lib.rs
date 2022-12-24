@@ -80,14 +80,18 @@ impl Blueprint {
         )(input)
     }
 
-    fn geode_count(&self) -> u16 {
+    fn geode_count(&self, rounds: u8) -> u16 {
         let start = World {
             robot_counts: [1, 0, 0, 0],
             resource_counts: [0, 0, 0, 0],
             blueprint: self,
         };
         let mut next_possibilities = vec![start];
-        for _ in 0..24 {
+        for i in 0..rounds {
+            #[cfg(feature = "show-progress")]
+            if i >= 23 {
+                println!("{} beginning round {}, {}", self.id, i, next_possibilities.len());
+            }
             let mut possibilities = HashSet::<World>::new();
 
             next_possibilities.sort_by_cached_key(|p| {
@@ -98,27 +102,48 @@ impl Blueprint {
                 next_possibilities.iter(),
             )
             .filter_map(|(i, p)| {
-                (i > 5000
-                    || !next_possibilities.iter().rev().take(i).take(5000).any(|o| {
-                        zip(p.robot_counts.iter(), o.robot_counts.iter())
-                            .all(|(p_rc, o_rc)| p_rc <= o_rc)
-                            && zip(p.resource_counts.iter(), o.resource_counts.iter())
+               ( i > 10000
+                    || !next_possibilities
+                        .iter()
+                        .rev()
+                        .take(i)
+                        .take(5000)
+                        .any(|o| {
+                            zip(p.robot_counts.iter(), o.robot_counts.iter())
                                 .all(|(p_rc, o_rc)| p_rc <= o_rc)
-                    }))
+                                && zip(p.resource_counts.iter(), o.resource_counts.iter())
+                                    .all(|(p_rc, o_rc)| p_rc <= o_rc)
+                        }))
                 .then_some(*p)
             })
             .collect();
-
+            #[cfg(feature = "show-progress")]
+            if i >= 23 {
+                println!("{} second part of round {}", self.id, next_possibilities.len());
+            }
             for possibility in take(&mut next_possibilities).iter() {
-                if !possibility.can_afford_everything()
-                    && possibilities.insert(possibility.collect())
-                {
-                    next_possibilities.push(possibility.collect());
-                }
-                for robot in 0..4 {
-                    if let Some(possibility) = possibility.build_robot_and_collect(robot) {
+                if i >= rounds - 2 {
+                    if let Some(possibility) = possibility.build_robot_and_collect(3) {
                         if possibilities.insert(possibility) {
                             next_possibilities.push(possibility);
+                        }
+                    } else {
+                        let possibility = possibility.collect();
+                        if possibilities.insert(possibility) {
+                            next_possibilities.push(possibility);
+                        }
+                    }
+                } else {
+                    if !possibility.can_afford_everything()
+                        && possibilities.insert(possibility.collect())
+                    {
+                        next_possibilities.push(possibility.collect());
+                    }
+                    for robot in 0..4 {
+                        if let Some(possibility) = possibility.build_robot_and_collect(robot) {
+                            if possibilities.insert(possibility) {
+                                next_possibilities.push(possibility);
+                            }
                         }
                     }
                 }
@@ -179,8 +204,17 @@ pub fn part_one(input: &str) -> u16 {
     let blueprints = blueprints(input);
     blueprints
         .par_iter()
-        .map(|bp| bp.id * bp.geode_count())
+        .map(|bp| bp.id * bp.geode_count(24))
         .sum()
+}
+
+pub fn part_two(input: &str) -> u16 {
+    let blueprints = blueprints(input);
+    blueprints
+        .iter()
+        .take(3)
+        .map(|bp| bp.id * bp.geode_count(32))
+        .product()
 }
 
 #[cfg(test)]
@@ -195,5 +229,15 @@ mod tests {
     #[test]
     fn challenge_part_one() {
         assert_eq!(part_one(include_str!("../challenge.txt")), 1962);
+    }
+
+    #[test]
+    fn example_part_two() {
+        assert_eq!(part_two(include_str!("../example.txt")), 56 * 62);
+    }
+
+    #[test]
+    fn challenge_part_two() {
+        assert_eq!(part_two(include_str!("../challenge.txt")), 0);
     }
 }
