@@ -63,65 +63,82 @@ impl Valley {
         }
         true
     }
-}
 
-pub fn part_one(input: &str) -> usize {
-    let mut cycle = 0;
-    let valley = Valley::new(input);
-    let mut possible_tiles = BTreeSet::<(usize, usize)>::new();
-    possible_tiles.insert((1, 0));
-    loop {
-        cycle += 1;
-        if possible_tiles.is_empty() {
-            panic!("Ran out of moves");
-        }
-        if cycle > 1000 {
-            panic!("over 100 cycles");
-        }
+    fn journey_time(
+        &self,
+        start: (usize, usize),
+        goal: (usize, usize),
+        start_time: usize,
+    ) -> usize {
+        let mut time = start_time;
+        let mut possible_tiles = BTreeSet::<(usize, usize)>::new();
+        possible_tiles.insert(start);
+        loop {
+            time += 1;
+            if possible_tiles.is_empty() {
+                panic!("Ran out of moves");
+            }
+            if time > 1000 {
+                panic!("over 1000 cycles");
+            }
 
-        for &(x, y) in take(&mut possible_tiles).iter() {
-            if y > 0 && valley.is_free(x, y - 1, cycle) {
-                possible_tiles.insert((x, y - 1));
-            }
-            if valley.is_free(x + 1, y, cycle) {
-                possible_tiles.insert((x + 1, y));
-            }
-            if valley.is_free(x, y + 1, cycle) {
-                possible_tiles.insert((x, y + 1));
-                if y + 2 == valley.height {
-                    return cycle;
+            for &(x, y) in take(&mut possible_tiles).iter() {
+                if y > 0 && self.is_free(x, y - 1, time) {
+                    possible_tiles.insert((x, y - 1));
+                }
+                if self.is_free(x + 1, y, time) {
+                    possible_tiles.insert((x + 1, y));
+                }
+                if y + 1 < self.height && self.is_free(x, y + 1, time) {
+                    possible_tiles.insert((x, y + 1));
+                }
+                if x > 0 && self.is_free(x - 1, y, time) {
+                    possible_tiles.insert((x - 1, y));
+                }
+                if self.is_free(x, y, time) {
+                    possible_tiles.insert((x, y));
                 }
             }
-            if x > 0 && valley.is_free(x - 1, y, cycle) {
-                possible_tiles.insert((x - 1, y));
-            }
-            if valley.is_free(x, y, cycle) {
-                possible_tiles.insert((x, y));
-            }
-        }
 
-        #[cfg(feature = "print")]
-        {
-            for y in 0..valley.height {
-                for x in 0..valley.width {
-                    print!(
-                        "{}",
-                        match (
-                            valley.is_free(x, y, cycle),
-                            possible_tiles.contains(&(x, y))
-                        ) {
-                            (true, true) => 'E',
-                            (true, false) => ' ',
-                            (false, true) => panic!(),
-                            (false, false) => '#',
-                        }
-                    );
+            #[cfg(feature = "print")]
+            {
+                for y in 0..self.height {
+                    for x in 0..self.width {
+                        print!(
+                            "{}",
+                            match (self.is_free(x, y, time), possible_tiles.contains(&(x, y))) {
+                                (true, true) => 'E',
+                                (true, false) => ' ',
+                                (false, true) => panic!(),
+                                (false, false) => '#',
+                            }
+                        );
+                    }
+                    println!();
                 }
                 println!();
             }
-            println!();
+            if possible_tiles.contains(&goal) {
+                return time;
+            }
         }
     }
+}
+
+pub fn part_one(input: &str) -> usize {
+    let valley = Valley::new(input);
+    valley.journey_time((1, 0), (valley.width - 2, valley.height - 1), 0)
+}
+
+pub fn part_two(input: &str) -> usize {
+    let valley = Valley::new(input);
+    let start = (1, 0);
+    let goal = (valley.width - 2, valley.height - 1);
+
+    let there = valley.journey_time(start, goal, 0);
+    let back = valley.journey_time(goal, start, there);
+    let again = valley.journey_time(start, goal, back);
+    again
 }
 
 #[cfg(test)]
@@ -136,5 +153,15 @@ mod tests {
     #[test]
     fn challenge_part_one() {
         assert_eq!(part_one(include_str!("../challenge.txt")), 277);
+    }
+
+    #[test]
+    fn example_part_two() {
+        assert_eq!(part_two(include_str!("../example.txt")), 54);
+    }
+
+    #[test]
+    fn challenge_part_two() {
+        assert_eq!(part_two(include_str!("../challenge.txt")), 877);
     }
 }
