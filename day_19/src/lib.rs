@@ -77,11 +77,14 @@ impl Blueprint {
                         [geode_robot_cost_ore, 0, geode_robot_cost_obsidian, 0],
                     ],
                     max_robots_required: [
-                        ore_robot_cost_ore.max(clay_robot_cost_ore).max(obsidian_robot_cost_ore).max(geode_robot_cost_ore),
+                        ore_robot_cost_ore
+                            .max(clay_robot_cost_ore)
+                            .max(obsidian_robot_cost_ore)
+                            .max(geode_robot_cost_ore),
                         obsidian_robot_cost_clay,
                         geode_robot_cost_obsidian,
-                        50
-                    ]
+                        50,
+                    ],
                 }
             },
         )(input)
@@ -142,26 +145,23 @@ impl Blueprint {
                         let possibility = possibility.collect();
                         next_possibilities.push(possibility);
                     }
-                } else {
-                    if zip(possibility.robot_counts.iter(), self.costs[3].iter())
+                } else if zip(possibility.robot_counts.iter(), self.costs[3].iter())
+                    .all(|(&r, &c)| r >= c)
+                    && zip(possibility.resource_counts.iter(), self.costs[3].iter())
                         .all(|(&r, &c)| r >= c)
-                        && zip(possibility.resource_counts.iter(), self.costs[3].iter())
-                            .all(|(&r, &c)| r >= c)
-                    {
-                        next_possibilities
-                            .push(possibility.build_robot_and_collect(3).unwrap());
-                    } else {
-                        if !possibility.can_afford_everything() {
-                            let possibility = possibility.collect();
+                {
+                    next_possibilities.push(possibility.build_robot_and_collect(3).unwrap());
+                } else {
+                    if !possibility.can_afford_everything() {
+                        let possibility = possibility.collect();
+                        if possibilities.insert(possibility) {
+                            next_possibilities.push(possibility);
+                        }
+                    }
+                    for robot in 0..4 {
+                        if let Some(possibility) = possibility.build_robot_and_collect(robot) {
                             if possibilities.insert(possibility) {
                                 next_possibilities.push(possibility);
-                            }
-                        }
-                        for robot in 0..4 {
-                            if let Some(possibility) = possibility.build_robot_and_collect(robot) {
-                                if possibilities.insert(possibility) {
-                                    next_possibilities.push(possibility);
-                                }
                             }
                         }
                     }
@@ -236,7 +236,7 @@ pub fn part_two(input: &str) -> u32 {
     blueprints
         .par_iter()
         .take(3)
-        .map(|bp| bp.id * bp.geode_count(32))
+        .map(|bp| bp.geode_count(32))
         .product()
 }
 
@@ -261,6 +261,6 @@ mod tests {
 
     #[test]
     fn challenge_part_two() {
-        assert_eq!(part_two(include_str!("../challenge.txt")), 4672);
+        assert_eq!(part_two(include_str!("../challenge.txt")), 88160);
     }
 }
