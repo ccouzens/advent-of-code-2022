@@ -90,7 +90,12 @@ impl Blueprint {
         for i in 0..rounds {
             #[cfg(feature = "show-progress")]
             if i >= 23 {
-                println!("{} beginning round {}, {}", self.id, i, next_possibilities.len());
+                println!(
+                    "{} beginning round {}, {}",
+                    self.id,
+                    i,
+                    next_possibilities.len()
+                );
             }
             let mut possibilities = HashSet::<World>::new();
 
@@ -102,24 +107,23 @@ impl Blueprint {
                 next_possibilities.iter(),
             )
             .filter_map(|(i, p)| {
-               ( i > 10000
-                    || !next_possibilities
-                        .iter()
-                        .rev()
-                        .take(i)
-                        .take(5000)
-                        .any(|o| {
-                            zip(p.robot_counts.iter(), o.robot_counts.iter())
+                (i > 10000
+                    || !next_possibilities.iter().rev().take(i).take(5000).any(|o| {
+                        zip(p.robot_counts.iter(), o.robot_counts.iter())
+                            .all(|(p_rc, o_rc)| p_rc <= o_rc)
+                            && zip(p.resource_counts.iter(), o.resource_counts.iter())
                                 .all(|(p_rc, o_rc)| p_rc <= o_rc)
-                                && zip(p.resource_counts.iter(), o.resource_counts.iter())
-                                    .all(|(p_rc, o_rc)| p_rc <= o_rc)
-                        }))
+                    }))
                 .then_some(*p)
             })
             .collect();
             #[cfg(feature = "show-progress")]
             if i >= 23 {
-                println!("{} second part of round {}", self.id, next_possibilities.len());
+                println!(
+                    "{} second part of round {}",
+                    self.id,
+                    next_possibilities.len()
+                );
             }
             for possibility in take(&mut next_possibilities).iter() {
                 if i >= rounds - 2 {
@@ -134,10 +138,11 @@ impl Blueprint {
                         }
                     }
                 } else {
-                    if !possibility.can_afford_everything()
-                        && possibilities.insert(possibility.collect())
-                    {
-                        next_possibilities.push(possibility.collect());
+                    if !possibility.can_afford_everything() {
+                        let possibility = possibility.collect();
+                        if possibilities.insert(possibility) {
+                            next_possibilities.push(possibility);
+                        }
                     }
                     for robot in 0..4 {
                         if let Some(possibility) = possibility.build_robot_and_collect(robot) {
