@@ -86,13 +86,14 @@ impl Blueprint {
             resource_counts: [0, 0, 0, 0],
             blueprint: self,
         };
-        // let most_expensive_robot_ore_cost = self.most_expensive_robot_ore_cost();
         let mut next_possibilities = vec![start];
         for _ in 0..24 {
             let mut possibilities = HashSet::<World>::new();
 
             for possibility in take(&mut next_possibilities).iter() {
-                if possibilities.insert(possibility.collect()) {
+                if !possibility.can_afford_everything()
+                    && possibilities.insert(possibility.collect())
+                {
                     next_possibilities.push(possibility.collect());
                 }
                 for robot in 0..4 {
@@ -126,6 +127,13 @@ impl<'a> World<'a> {
             *resource += *robot;
         }
         world
+    }
+
+    fn can_afford_everything(&self) -> bool {
+        self.blueprint.costs.iter().all(|costs| {
+            zip(costs.iter(), self.resource_counts.iter())
+                .all(|(cost, available)| cost <= available)
+        })
     }
 
     fn build_robot_and_collect(&self, robot: usize) -> Option<Self> {
