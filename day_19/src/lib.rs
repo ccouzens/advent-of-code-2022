@@ -14,6 +14,7 @@ use rayon::prelude::*;
 struct Blueprint {
     id: u16,
     costs: [[u16; 4]; 4],
+    max_robots_required: [u16; 4],
 }
 
 impl Blueprint {
@@ -75,6 +76,12 @@ impl Blueprint {
                         [obsidian_robot_cost_ore, obsidian_robot_cost_clay, 0, 0],
                         [geode_robot_cost_ore, 0, geode_robot_cost_obsidian, 0],
                     ],
+                    max_robots_required: [
+                        ore_robot_cost_ore.max(clay_robot_cost_ore).max(obsidian_robot_cost_ore).max(geode_robot_cost_ore),
+                        obsidian_robot_cost_clay,
+                        geode_robot_cost_obsidian,
+                        50
+                    ]
                 }
             },
         )(input)
@@ -136,16 +143,25 @@ impl Blueprint {
                         next_possibilities.push(possibility);
                     }
                 } else {
-                    if !possibility.can_afford_everything() {
-                        let possibility = possibility.collect();
-                        if possibilities.insert(possibility) {
-                            next_possibilities.push(possibility);
-                        }
-                    }
-                    for robot in 0..4 {
-                        if let Some(possibility) = possibility.build_robot_and_collect(robot) {
+                    if zip(possibility.robot_counts.iter(), self.costs[3].iter())
+                        .all(|(&r, &c)| r >= c)
+                        && zip(possibility.resource_counts.iter(), self.costs[3].iter())
+                            .all(|(&r, &c)| r >= c)
+                    {
+                        next_possibilities
+                            .push(possibility.build_robot_and_collect(3).unwrap());
+                    } else {
+                        if !possibility.can_afford_everything() {
+                            let possibility = possibility.collect();
                             if possibilities.insert(possibility) {
                                 next_possibilities.push(possibility);
+                            }
+                        }
+                        for robot in 0..4 {
+                            if let Some(possibility) = possibility.build_robot_and_collect(robot) {
+                                if possibilities.insert(possibility) {
+                                    next_possibilities.push(possibility);
+                                }
                             }
                         }
                     }
@@ -186,6 +202,10 @@ impl<'a> World<'a> {
     fn build_robot_and_collect(&self, robot: usize) -> Option<Self> {
         let mut world = *self;
         let costs = self.blueprint.costs.get(robot)?;
+        let max_required = self.blueprint.max_robots_required.get(robot)?;
+        if self.robot_counts.get(robot)? >= max_required {
+            return None;
+        }
         for (resource, cost) in zip(world.resource_counts.iter_mut(), costs.iter()) {
             *resource = resource.checked_sub(*cost)?;
         }
@@ -241,6 +261,6 @@ mod tests {
 
     #[test]
     fn challenge_part_two() {
-        assert_eq!(part_two(include_str!("../challenge.txt")), 0);
+        assert_eq!(part_two(include_str!("../challenge.txt")), 4672);
     }
 }
