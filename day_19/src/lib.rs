@@ -99,31 +99,33 @@ impl Blueprint {
             }
             let mut possibilities = HashSet::<World>::new();
 
-            next_possibilities.sort_by_cached_key(|p| {
-                p.robot_counts.iter().sum::<u16>() + p.resource_counts.iter().sum::<u16>()
-            });
-            next_possibilities = zip(
-                (0..next_possibilities.len()).rev(),
-                next_possibilities.iter(),
-            )
-            .filter_map(|(i, p)| {
-                (i > 10000
-                    || !next_possibilities.iter().rev().take(i).take(5000).any(|o| {
-                        zip(p.robot_counts.iter(), o.robot_counts.iter())
-                            .all(|(p_rc, o_rc)| p_rc <= o_rc)
-                            && zip(p.resource_counts.iter(), o.resource_counts.iter())
+            if i <= rounds - 2 {
+                next_possibilities.sort_by_cached_key(|p| {
+                    p.robot_counts.iter().sum::<u16>() + p.resource_counts.iter().sum::<u16>()
+                });
+                next_possibilities = zip(
+                    (0..next_possibilities.len()).rev(),
+                    next_possibilities.iter(),
+                )
+                .filter_map(|(i, p)| {
+                    (i > 10000
+                        || !next_possibilities.iter().rev().take(i).take(5000).any(|o| {
+                            zip(p.robot_counts.iter(), o.robot_counts.iter())
                                 .all(|(p_rc, o_rc)| p_rc <= o_rc)
-                    }))
-                .then_some(*p)
-            })
-            .collect();
-            #[cfg(feature = "show-progress")]
-            if i >= 23 {
-                println!(
-                    "{} second part of round {}",
-                    self.id,
-                    next_possibilities.len()
-                );
+                                && zip(p.resource_counts.iter(), o.resource_counts.iter())
+                                    .all(|(p_rc, o_rc)| p_rc <= o_rc)
+                        }))
+                    .then_some(*p)
+                })
+                .collect();
+                #[cfg(feature = "show-progress")]
+                if i >= 23 {
+                    println!(
+                        "{} second part of round {}",
+                        self.id,
+                        next_possibilities.len()
+                    );
+                }
             }
             for possibility in take(&mut next_possibilities).iter() {
                 if i >= rounds - 2 {
