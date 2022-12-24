@@ -130,14 +130,10 @@ impl Blueprint {
             for possibility in take(&mut next_possibilities).iter() {
                 if i >= rounds - 2 {
                     if let Some(possibility) = possibility.build_robot_and_collect(3) {
-                        if possibilities.insert(possibility) {
-                            next_possibilities.push(possibility);
-                        }
+                        next_possibilities.push(possibility);
                     } else {
                         let possibility = possibility.collect();
-                        if possibilities.insert(possibility) {
-                            next_possibilities.push(possibility);
-                        }
+                        next_possibilities.push(possibility);
                     }
                 } else {
                     if !possibility.can_afford_everything() {
